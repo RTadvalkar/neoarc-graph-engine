@@ -12,7 +12,7 @@ export const CYTOSCAPE_LAYOUTS: readonly RendererLayoutDescriptor[] = [
   { id: "grid", label: "Grid" },
 ]
 
-export const DEFAULT_LAYOUT_ID = "cose"
+export const DEFAULT_LAYOUT_ID = "breadthfirst"
 
 export function buildLayoutOptions(layoutId: string): LayoutOptions {
   switch (layoutId) {
@@ -21,7 +21,8 @@ export function buildLayoutOptions(layoutId: string): LayoutOptions {
         name: "breadthfirst",
         directed: true,
         padding: 36,
-        spacingFactor: 1.35,
+        spacingFactor: 0.9,
+        avoidOverlap: true,
         animate: false,
         fit: true,
       }
@@ -50,11 +51,14 @@ export function buildLayoutOptions(layoutId: string): LayoutOptions {
         padding: 36,
         animate: false,
         fit: true,
-        nodeRepulsion: () => 9000,
-        idealEdgeLength: () => 130,
-        nestingFactor: 1.2,
-        gravity: 0.3,
-        componentSpacing: 90,
+        randomize: true,
+        nodeRepulsion: () => 4000,
+        idealEdgeLength: () => 70,
+        edgeElasticity: () => 100,
+        nestingFactor: 1.1,
+        gravity: 0.8,
+        numIter: 1200,
+        componentSpacing: 60,
       } as LayoutOptions
   }
 }

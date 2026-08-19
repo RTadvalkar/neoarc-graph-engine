@@ -37,6 +37,8 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   private theme: GraphRendererTheme
   private layoutId: string
   private topologyKey: string
+  private resizeObserver?: ResizeObserver
+  private hadRealSize = false
 
   constructor(options: GraphRendererMountOptions) {
     this.options = options
@@ -56,12 +58,34 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       elements,
       style: buildStylesheet(this.theme),
       wheelSensitivity: 0.2,
-      minZoom: 0.2,
+      minZoom: 0.05,
       maxZoom: 3,
     })
 
     this.wireEvents()
+    this.observeResize()
     this.runLayout()
+  }
+
+  /**
+   * The container often mounts at (near-)zero height inside a flex/grid cell,
+   * so an initial layout would pack every node at the top. Watch for the
+   * container acquiring real dimensions and, on the first real size, re-run the
+   * layout and fit so the graph fills the viewport. Subsequent resizes just
+   * keep the canvas backing store in sync.
+   */
+  private observeResize() {
+    if (typeof ResizeObserver === "undefined") return
+    this.resizeObserver = new ResizeObserver(() => {
+      const w = this.cy.width()
+      const h = this.cy.height()
+      this.cy.resize()
+      if (!this.hadRealSize && w > 0 && h > 0) {
+        this.hadRealSize = true
+        this.runLayout()
+      }
+    })
+    this.resizeObserver.observe(this.options.container)
   }
 
   private emit(event: GraphSemanticEvent) {
@@ -143,7 +167,9 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   }
 
   runLayout(): void {
-    this.cy.layout(buildLayoutOptions(this.layoutId)).run()
+    const layout = this.cy.layout(buildLayoutOptions(this.layoutId))
+    layout.one("layoutstop", () => this.fit())
+    layout.run()
   }
 
   fit(padding = 40): void {
@@ -173,6 +199,7 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   }
 
   destroy(): void {
+    this.resizeObserver?.disconnect()
     this.cy.destroy()
   }
 }
