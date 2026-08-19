@@ -149,15 +149,27 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
 
         const targetSnapshot = spatialMemoryKey ? getSpatialSnapshot(spatialMemoryKey) : undefined
         if (targetSnapshot) {
-          // A workspace already exists for the view/layout being entered:
+          // A workspace already exists for the view/layout/scope being entered:
           // never re-randomize it. Set the layout identity first (so the
           // restore's incremental-settle check reflects the TARGET layout,
-          // not the one being left), then restore verbatim.
+          // not the one being left), then restore verbatim. This is the
+          // "revisit a filter / clear a filter back to base" path.
           if (layoutChanged && layoutId) handle.setLayoutIdentity(layoutId)
           handle.restoreSpatialSnapshot(targetSnapshot)
-        } else if (layoutChanged && layoutId) {
-          // No saved workspace for the target layout (or spatial memory is
-          // opted out entirely): exactly one intentional fresh layout.
+        } else if (layoutId) {
+          // No saved workspace for the view/layout/scope being entered. This
+          // branch is reached ONLY by an intentional user-driven workspace
+          // change — an explicit layout switch OR a new analytical-view
+          // restriction (filter / local focus / overlay focus restriction),
+          // both of which move `spatialMemoryKey` to a scope never seen
+          // before. Treat the visible subgraph as its own workspace: run the
+          // currently-selected layout from scratch and fit. `setLayout` runs
+          // randomized and fits on completion.
+          //
+          // An AUTOMATIC GraphModel data update (agent/backend patch) never
+          // reaches here — it bumps the model revision but not the spatial
+          // key, so only the position-preserving incremental `setViewModel`
+          // path above runs, keeping the mental map intact.
           handle.setLayout(layoutId)
         }
       }
