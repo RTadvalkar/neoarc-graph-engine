@@ -105,6 +105,7 @@ export function GraphExplorer({
         onFit={() => canvasRef.current?.fit()}
         onZoomIn={() => canvasRef.current?.zoomBy(1.2)}
         onZoomOut={() => canvasRef.current?.zoomBy(1 / 1.2)}
+        onRelayout={() => canvasRef.current?.runLayout()}
         query={viewState.filters?.query ?? ""}
         onQueryChange={setQuery}
         selectedNodeIds={viewState.selectedNodeIds}

@@ -1,8 +1,10 @@
 import type {
+  GraphChangeSetSource,
   GraphEdge,
   GraphId,
   GraphModel,
   GraphNode,
+  GraphPatch,
   GraphTraversalDirection,
 } from "@neoarc/graph-contracts"
 
@@ -167,4 +169,67 @@ export function expandFromBackend(
       (newNodeIdSet.has(e.source) || newNodeIdSet.has(e.target)),
   )
   return { nodes, edges }
+}
+
+export interface AgentUpdateSimulation {
+  readonly patch: GraphPatch
+  readonly sourceRefs: readonly GraphChangeSetSource[]
+}
+
+let agentSimulationCounter = 0
+
+/**
+ * SHOWCASE ONLY. Simulates an autonomous agent (e.g. a migration/upgrade
+ * agent) proposing a supplied `GraphPatch` against WHATEVER model is
+ * currently loaded — it never assumes `SYSTEM_GRAPH` specifically, so the
+ * "Simulate agent update" demo works against any of the five scenarios. The
+ * patch always adds two new services wired together, updates one already-
+ * loaded node's properties, and removes one already-loaded relationship —
+ * enough variety to exercise every `GraphChangeSet` bucket (add/update/
+ * remove, nodes/edges) in a single supplied patch.
+ */
+export function buildAgentUpdatePatch(model: GraphModel): AgentUpdateSimulation | undefined {
+  if (model.nodes.length === 0) return undefined
+
+  agentSimulationCounter += 1
+  const suffix = `sim${agentSimulationCounter}`
+
+  const anchor = model.nodes.find((n) => n.type === "Service") ?? model.nodes[0]
+  const updateTarget = model.nodes.find((n) => n.id !== anchor.id) ?? anchor
+  const removableEdge = model.edges[0]
+
+  const runtimeNode: GraphNode = {
+    id: `agent-runtime-${suffix}`,
+    type: "Service",
+    label: "Spring AI Runtime",
+    properties: { team: "Platform", introducedBy: "agent" },
+  }
+  const resolverNode: GraphNode = {
+    id: `agent-resolver-${suffix}`,
+    type: "Service",
+    label: "Model Resolver",
+    properties: { team: "Platform", introducedBy: "agent" },
+  }
+
+  const patch: GraphPatch = {
+    baseRevision: model.revision,
+    resultRevision: (model.revision ?? 1) + 1,
+    addNodes: [runtimeNode, resolverNode],
+    addEdges: [
+      { id: `agent-edge-anchor-${suffix}`, type: "dependsOn", source: anchor.id, target: runtimeNode.id },
+      { id: `agent-edge-resolver-${suffix}`, type: "dependsOn", source: runtimeNode.id, target: resolverNode.id },
+    ],
+    updateNodes: [
+      {
+        ...updateTarget,
+        properties: { ...updateTarget.properties, lastAgentTouch: new Date().toISOString() },
+      },
+    ],
+    removeEdgeIds: removableEdge ? [removableEdge.id] : undefined,
+  }
+
+  return {
+    patch,
+    sourceRefs: [{ kind: "agent", id: `agent-run-${suffix}`, label: "Migration agent" }],
+  }
 }
