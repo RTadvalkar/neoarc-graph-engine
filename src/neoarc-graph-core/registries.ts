@@ -4,6 +4,7 @@ import type {
   GraphProperties,
   GraphPropertyValue,
 } from "@neoarc/graph-contracts"
+import { DEFAULT_NODE_SHAPE } from "@neoarc/graph-contracts"
 import { Registry } from "./registry"
 
 /** Visual descriptor for a node/edge icon, kept renderer-neutral. */
@@ -63,7 +64,7 @@ const humanizeType = (type: string): string =>
 export const fallbackNodeTypeDefinition = (type: string): GraphNodeTypeDefinition => ({
   type,
   label: humanizeType(type) || "Node",
-  shape: "round-rectangle",
+  shape: DEFAULT_NODE_SHAPE,
   tone: "neutral",
   icon: "unknown",
 })

@@ -16,7 +16,9 @@ const nodeTypes: GraphNodeTypeDefinition[] = [
     type: "Service",
     label: "Service",
     tone: "service",
-    shape: "round-rectangle",
+    // Microservice → container: a distinct silhouette from ordinary nodes,
+    // signaling "this groups/hosts other things" without a closed enum.
+    shape: "container",
     icon: "service",
     properties: [
       { key: "team", label: "Owning team" },
@@ -24,17 +26,25 @@ const nodeTypes: GraphNodeTypeDefinition[] = [
       { key: "tier", label: "Tier" },
     ],
   },
-  { type: "Requirement", label: "Requirement", tone: "requirement", shape: "tag", icon: "requirement" },
+  // Requirement → rounded-rectangle (per the amendment's worked example).
+  { type: "Requirement", label: "Requirement", tone: "requirement", shape: "rounded-rectangle", icon: "requirement" },
   { type: "Capability", label: "Capability", tone: "capability", shape: "hexagon", icon: "capability" },
-  { type: "Api", label: "API", tone: "api", shape: "rectangle", icon: "api" },
+  // API → hexagon (per the amendment's worked example).
+  { type: "Api", label: "API", tone: "api", shape: "hexagon", icon: "api" },
   { type: "Entity", label: "Entity", tone: "entity", shape: "ellipse", icon: "entity" },
-  { type: "Story", label: "Story", tone: "story", shape: "round-rectangle", icon: "story" },
+  // Story → pill. Proof point: this line is the ONLY change needed to alter
+  // every Story node's silhouette across the whole graph — no edits to
+  // graph-core, graph-contracts, or the Cytoscape renderer are required.
+  { type: "Story", label: "Story", tone: "story", shape: "pill", icon: "story" },
+  // Test Case → diamond (per the amendment's worked example).
   { type: "Test", label: "Test", tone: "test", shape: "diamond", icon: "test" },
   {
     type: "Finding",
     label: "Finding",
     tone: "finding",
-    shape: "diamond",
+    // Finding → octagon (per the amendment's worked example) — visually
+    // distinct from Test's diamond even though both previously used diamond.
+    shape: "octagon",
     icon: "finding",
     properties: [
       { key: "severity", label: "Severity" },

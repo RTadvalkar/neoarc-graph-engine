@@ -7,3 +7,4 @@
  * seam, with zero changes upstream.
  */
 export { cytoscapeRenderer } from "./cytoscape-renderer"
+export { mapNodeShapeToCytoscape, CYTOSCAPE_FALLBACK_SHAPE } from "./shape-mapping"

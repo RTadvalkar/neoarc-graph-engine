@@ -47,6 +47,12 @@ export function buildStylesheet(theme: GraphRendererTheme): StylesheetJson {
       },
     },
     {
+      selector: "node.pill",
+      style: {
+        "corner-radius": "999",
+      },
+    },
+    {
       selector: "node.selected",
       style: {
         "border-color": theme.selected,

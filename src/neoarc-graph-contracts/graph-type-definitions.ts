@@ -15,15 +15,32 @@ export type GraphTone =
   | "danger"
   | (string & {})
 
-/** Renderer-neutral node silhouette. Open string; adapters map to their vocab. */
+/**
+ * Renderer-neutral semantic node silhouette. This is a closed vocabulary of
+ * intent, not a renderer's shape vocabulary — no Cytoscape shape name may be
+ * exposed here. Each renderer adapter owns its own mapping from these values
+ * to renderer-specific primitives (see `neoarc-graph-cytoscape/shape-mapping`
+ * for the Cytoscape v1 mapping) and MUST fall back safely to `generic` for
+ * any value it does not understand, so a future Ogma/yFiles/Sigma renderer
+ * can adopt the same contract without graph-core or graph-contracts changes.
+ */
 export type GraphNodeShape =
-  | "round-rectangle"
   | "rectangle"
+  | "rounded-rectangle"
   | "ellipse"
-  | "hexagon"
+  | "circle"
   | "diamond"
+  | "hexagon"
+  | "octagon"
+  | "triangle"
+  | "pill"
+  | "container"
   | "tag"
+  | "generic"
   | (string & {})
+
+/** Safe, renderer-neutral fallback for any shape value a renderer can't map. */
+export const DEFAULT_NODE_SHAPE: GraphNodeShape = "generic"
 
 export type GraphEdgeLineStyle = "solid" | "dashed" | "dotted" | (string & {})
 
