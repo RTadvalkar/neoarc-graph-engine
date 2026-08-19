@@ -13,8 +13,9 @@ import { GraphExplorer } from "@neoarc/graph-ui"
 import { applyGraphPatch, resolveOverlayFreshness } from "@neoarc/graph-core"
 import { cytoscapeRenderer } from "@neoarc/graph-cytoscape"
 import { showcaseRegistries } from "../graph-lab/registries"
-import { IMPACT_CHANGE_INTENT, IMPACT_SYSTEM_GRAPH } from "./impact-scenario"
+import { IMPACT_CHANGE_INTENT } from "./impact-scenario"
 import { IMPACT_RESULT } from "./impact-result"
+import { IMPACT_VIEW_DESCRIPTOR } from "./impact-view-descriptor"
 import { ImpactReport } from "./impact-report"
 
 /** Supplied per-node extras (reason/hop) rendered via the reusable inspector seam. */
@@ -85,7 +86,10 @@ function renderEdgeExtras(edge: GraphViewEdge) {
  */
 export function ImpactAnalysis() {
   const [stage, setStage] = useState<"trigger" | "graph">("trigger")
-  const [model, setModel] = useState<GraphModel>(IMPACT_SYSTEM_GRAPH)
+  // The FAB-style "View impact graph" action conceptually produces a supplied
+  // GraphViewDescriptor; the initial model comes straight from it (runtime
+  // patches then evolve this local copy for the staleness demo).
+  const [model, setModel] = useState<GraphModel>(IMPACT_VIEW_DESCRIPTOR.model)
   const [reportOpen, setReportOpen] = useState(false)
   const [status, setStatus] = useState<string>(
     "Impact analysis completed. Open the impact graph to review the supplied result.",
@@ -98,7 +102,8 @@ export function ImpactAnalysis() {
     [model],
   )
 
-  const overlays = useMemo(() => [IMPACT_RESULT], [])
+  // Overlays are the descriptor's supplied overlays — not re-derived here.
+  const overlays = IMPACT_VIEW_DESCRIPTOR.overlays ?? []
 
   const handleIntent = useCallback((event: GraphSemanticEvent) => {
     if (event.type === "graph.impact.request") {
@@ -233,17 +238,18 @@ export function ImpactAnalysis() {
 
       <div className="min-h-0 flex-1">
         <GraphExplorer
+          // Descriptor-driven handoff: model/overlays/initialViewState/
+          // viewIdentity/fitOnLoad all come from IMPACT_VIEW_DESCRIPTOR.
+          // `model` is the live (possibly patched) copy seeded from the
+          // descriptor; registries are supplied separately (per slice scope).
           model={model}
           registries={showcaseRegistries}
           renderer={cytoscapeRenderer}
           overlays={overlays}
           overlayRestrictLabel="Impacted only"
-          initialViewState={{
-            layoutId: "fcose",
-            selectedNodeIds: [...IMPACT_CHANGE_INTENT.rootEntityIds],
-            overlay: { showOverlay: true, showPaths: true },
-          }}
-          viewIdentity="impact-spring-ai"
+          initialViewState={IMPACT_VIEW_DESCRIPTOR.initialViewState}
+          viewIdentity={IMPACT_VIEW_DESCRIPTOR.id}
+          fitOnLoad={IMPACT_VIEW_DESCRIPTOR.fitOnLoad}
           renderNodeExtras={renderNodeExtras}
           renderEdgeExtras={renderEdgeExtras}
           onIntent={handleIntent}
