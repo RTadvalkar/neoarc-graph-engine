@@ -37,6 +37,20 @@ export interface GraphExplorerProps {
   /** Authoritative intents (expand/search/path/impact) the host must fulfill. */
   readonly onIntent?: (event: GraphSemanticEvent) => void
   /**
+   * Observational only: fired exactly once for every dispatched
+   * `GraphSemanticEvent`, forwarded verbatim from the controller.
+   */
+  readonly onEvent?: (event: GraphSemanticEvent) => void
+  /**
+   * Host fulfillment for a `registries.actions` entry. `context.target` is
+   * always the action's own `target` ("node"/"edge"/"canvas"/"selection");
+   * `context.id` is the node/edge id for node/edge-targeted actions.
+   */
+  readonly onAction?: (
+    actionId: string,
+    context: { readonly target: "node" | "edge" | "canvas" | "selection"; readonly id?: string },
+  ) => void
+  /**
    * Stable identity for "the thing being explored" (e.g. a scenario id, a
    * saved query id, or a root node id) — distinct from `GraphModel`'s
    * revision, which changes on every automatic data update. Used as part of
@@ -65,6 +79,8 @@ export function GraphExplorer({
   overlays,
   overlayRestrictLabel,
   onIntent,
+  onEvent,
+  onAction,
   viewIdentity = "default",
   renderNodeExtras,
   renderEdgeExtras,
@@ -75,7 +91,7 @@ export function GraphExplorer({
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [overlayOpen, setOverlayOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const controller = useGraphExplorer({ model, initialViewState, overlays, onIntent })
+  const controller = useGraphExplorer({ model, initialViewState, overlays, onIntent, onEvent })
   const {
     viewState,
     viewModel,
@@ -136,6 +152,8 @@ export function GraphExplorer({
         filtersActive={filtersActive}
         onToggleOverlays={hasOverlays ? () => setOverlayOpen((v) => !v) : undefined}
         overlaysActive={overlayOpen}
+        actions={registries.actions.values()}
+        onAction={onAction}
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[16rem_1fr_20rem]">
@@ -144,6 +162,7 @@ export function GraphExplorer({
             viewModel={viewModel}
             registries={registries}
             onSelect={(nodeId) => dispatch({ type: "graph.node.select", nodeId })}
+            onSelectEdge={(edgeId) => dispatch({ type: "graph.edge.select", edgeId })}
           />
         </aside>
 
@@ -202,6 +221,7 @@ export function GraphExplorer({
             renderNodeExtras={renderNodeExtras}
             renderEdgeExtras={renderEdgeExtras}
             onToggleCollapse={toggleCollapse}
+            onAction={onAction}
           />
         </aside>
       </div>

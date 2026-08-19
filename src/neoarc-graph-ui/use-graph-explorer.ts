@@ -49,6 +49,13 @@ export interface UseGraphExplorerOptions {
    * impact requiring authoritative data) are forwarded here. No hidden fetches.
    */
   readonly onIntent?: (event: GraphSemanticEvent) => void
+  /**
+   * Observational only: fired exactly once for every `GraphSemanticEvent`
+   * dispatched through the controller, view-only or authoritative alike,
+   * BEFORE it is applied/forwarded. Never a second path for fulfillment —
+   * `onIntent` remains the sole authoritative-intent forwarding seam.
+   */
+  readonly onEvent?: (event: GraphSemanticEvent) => void
 }
 
 export interface GraphExplorerController {
@@ -79,7 +86,7 @@ export interface GraphExplorerController {
 const EMPTY_OVERLAYS: readonly GraphOverlay[] = []
 
 export function useGraphExplorer(options: UseGraphExplorerOptions): GraphExplorerController {
-  const { model, initialViewState, onIntent } = options
+  const { model, initialViewState, onIntent, onEvent } = options
   const overlays = options.overlays ?? EMPTY_OVERLAYS
   const [viewState, setViewState] = useState<GraphViewState>(() =>
     createInitialViewState(initialViewState),
@@ -112,6 +119,7 @@ export function useGraphExplorer(options: UseGraphExplorerOptions): GraphExplore
 
   const dispatch = useCallback(
     (event: GraphSemanticEvent) => {
+      onEvent?.(event)
       switch (event.type) {
         case "graph.node.select":
           setViewState((s) => selectNode(s, event.nodeId, event.additive))
@@ -175,7 +183,7 @@ export function useGraphExplorer(options: UseGraphExplorerOptions): GraphExplore
           onIntent?.(event)
       }
     },
-    [onIntent],
+    [onIntent, onEvent],
   )
 
   const setQuery = useCallback((query: string) => {

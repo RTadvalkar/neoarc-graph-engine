@@ -52,6 +52,26 @@ const nodeTypes: GraphNodeTypeDefinition[] = [
     ],
   },
   { type: "ExternalSystem", label: "External system", tone: "external", shape: "rectangle", icon: "external" },
+  // Configuration-only type proof: registering "Deployment" here is the ONLY
+  // change required to give it a distinct shape/icon/properties — no edits
+  // to graph-core, graph-ui theme, or the Cytoscape mapping layer. Reuses the
+  // existing generic "info" tone rather than introducing a new theme tone.
+  {
+    type: "Deployment",
+    label: "Deployment",
+    tone: "info",
+    shape: "hexagon",
+    icon: "deployment",
+    properties: [
+      { key: "owner", label: "Owning team" },
+      { key: "version", label: "Version" },
+      { key: "environment", label: "Environment" },
+      { key: "region", label: "Region" },
+      { key: "confidence", label: "Confidence", formatterId: "confidence" },
+      { key: "risk", label: "Risk", formatterId: "risk" },
+      { key: "lastModified", label: "Last modified", formatterId: "lastModified" },
+    ],
+  },
 ]
 
 const edgeTypes: GraphEdgeTypeDefinition[] = [
@@ -64,6 +84,8 @@ const edgeTypes: GraphEdgeTypeDefinition[] = [
   { type: "verifies", label: "verifies", tone: "test", lineStyle: "solid", targetArrow: "triangle" },
   { type: "affects", label: "affects", tone: "finding", lineStyle: "solid", targetArrow: "triangle" },
   { type: "integratesWith", label: "integrates with", tone: "external", lineStyle: "dashed", targetArrow: "chevron" },
+  // Configuration-only proof, edge half: a new edge type is again registry-only.
+  { type: "streamsTo", label: "streams to", tone: "info", lineStyle: "dotted", targetArrow: "chevron" },
 ]
 
 const icons: GraphIconDefinition[] = [
@@ -76,6 +98,7 @@ const icons: GraphIconDefinition[] = [
   { id: "test", glyph: "TST" },
   { id: "finding", glyph: "!" },
   { id: "external", glyph: "EXT" },
+  { id: "deployment", glyph: "DEP" },
 ]
 
 export const showcaseRegistries = createGraphRegistries({
@@ -85,5 +108,42 @@ export const showcaseRegistries = createGraphRegistries({
   propertyFormatters: {
     severity: (value) => String(value).toUpperCase(),
     tier: (value) => `Tier ${value}`,
+    confidence: (value) => `${Math.round(Number(value) * 100)}%`,
+    risk: (value) => String(value).replace(/^\w/, (c) => c.toUpperCase()),
+    lastModified: (value) => new Date(String(value)).toLocaleDateString(),
   },
+  actions: [
+    {
+      id: "open-requirement",
+      label: "Open Requirement",
+      target: "node",
+      appliesToTypes: ["Requirement"],
+      description: "Product-fulfilled: open this requirement in the backend.",
+    },
+    {
+      id: "view-change-set",
+      label: "View Change Set",
+      target: "node",
+      appliesToTypes: ["Deployment"],
+      description: "Product-fulfilled: view the change set behind this deployment.",
+    },
+    {
+      id: "trace-relationship",
+      label: "Trace Relationship",
+      target: "edge",
+      description: "Product-fulfilled: trace the authoritative source of this relationship.",
+    },
+    {
+      id: "reset-view",
+      label: "Reset view",
+      target: "canvas",
+      description: "Showcase-only: clears selection via the same semantic event path.",
+    },
+    {
+      id: "inspect-selection",
+      label: "Inspect selection",
+      target: "selection",
+      description: "Showcase-only: logs the current selection to the dev panel.",
+    },
+  ],
 })

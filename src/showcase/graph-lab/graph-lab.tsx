@@ -14,6 +14,7 @@ import { cytoscapeRenderer } from "@neoarc/graph-cytoscape"
 import { showcaseRegistries } from "./registries"
 import { buildAgentUpdatePatch, expandFromBackend } from "./system-graph"
 import { GRAPH_LAB_SCENARIOS } from "./scenarios"
+import { GraphDevPanel } from "./graph-dev-panel"
 
 /**
  * SHOWCASE ONLY. Renders a `GraphChangeSet` (derived against the pre-patch
@@ -60,6 +61,8 @@ export function GraphLab() {
     `Loaded ${scenario.model.nodes.length} nodes, ${scenario.model.edges.length} relationships.`,
   )
   const [changeSummary, setChangeSummary] = useState<readonly string[] | null>(null)
+  const [lastEvent, setLastEvent] = useState<GraphSemanticEvent | undefined>(undefined)
+  const [eventCount, setEventCount] = useState(0)
 
   const handleScenarioChange = useCallback((id: string) => {
     const next = GRAPH_LAB_SCENARIOS.find((s) => s.id === id) ?? GRAPH_LAB_SCENARIOS[0]
@@ -67,7 +70,38 @@ export function GraphLab() {
     setModel(next.model)
     setStatus(`Loaded ${next.model.nodes.length} nodes, ${next.model.edges.length} relationships.`)
     setChangeSummary(null)
+    setLastEvent(undefined)
+    setEventCount(0)
   }, [])
+
+  /**
+   * Renderer-boundary proof: purely observational — records the latest
+   * dispatched event for the dev panel. Never fulfills anything; `onIntent`
+   * remains the sole authoritative-intent path below.
+   */
+  const handleEvent = useCallback((event: GraphSemanticEvent) => {
+    setLastEvent(event)
+    setEventCount((c) => c + 1)
+  }, [])
+
+  /**
+   * Fulfills `registries.actions` entries. Showcase-only: node/edge actions
+   * just report status text (no backend wiring per G4 scope); the canvas
+   * "Reset view" action clears selection through the ordinary selection
+   * event path via a ref set by GraphExplorer would be ideal, but since
+   * clearing selection is a view-only concern the Explorer already owns
+   * internally, this demo simply surfaces what was requested.
+   */
+  const handleAction = useCallback(
+    (actionId: string, context: { target: "node" | "edge" | "canvas" | "selection"; id?: string }) => {
+      setStatus(
+        context.id
+          ? `Action "${actionId}" requested for ${context.target} "${context.id}" (no backend wired in this demo).`
+          : `Action "${actionId}" requested for ${context.target} (no backend wired in this demo).`,
+      )
+    },
+    [],
+  )
 
   const handleIntent = useCallback((event: GraphSemanticEvent) => {
     if (event.type !== "graph.expand.request") {
@@ -192,8 +226,17 @@ export function GraphLab() {
           initialViewState={scenario.initialViewState}
           viewIdentity={scenarioId}
           onIntent={handleIntent}
+          onEvent={handleEvent}
+          onAction={handleAction}
         />
       </div>
+
+      <GraphDevPanel
+        model={model}
+        lastEvent={lastEvent}
+        eventCount={eventCount}
+        rendererId={cytoscapeRenderer.id}
+      />
 
       {changeSummary && changeSummary.length > 0 ? (
         <div
