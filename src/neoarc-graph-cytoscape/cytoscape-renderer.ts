@@ -144,6 +144,8 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       layout: { name: "preset" },
     })
 
+    ;(globalThis as any).__debugCy = this.cy
+
     this.wireEvents()
 
     const restoredNodeIds = restoreNodePositions
