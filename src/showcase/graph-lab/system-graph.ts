@@ -132,6 +132,16 @@ const BACKEND_EDGES: GraphEdge[] = [
   { id: "e9", type: "implements", source: "svc-payments", target: "cap-payments" },
   { id: "e10", type: "implements", source: "svc-catalog", target: "cap-catalog" },
   { id: "e11", type: "implements", source: "svc-identity", target: "cap-auth" },
+  // SHOWCASE-SUPPLIED semantic facts: which API fulfills which capability.
+  // Canonical API -> Capability `implements` relationships, supplied directly
+  // (NEVER inferred from `containerId`, which is layout containment only). These
+  // let a "which APIs fulfill which capabilities/requirements?" analytical view
+  // (Api + Capability + Requirement) form a real canonical chain:
+  //   POST /charge -> Accept payments -> {PCI DSS, Sub-200ms checkout}
+  //   POST /token  -> Authenticate users -> GDPR data handling
+  { id: "e25", type: "implements", source: "api-charge", target: "cap-payments" },
+  { id: "e26", type: "implements", source: "api-products", target: "cap-catalog" },
+  { id: "e27", type: "implements", source: "api-token", target: "cap-auth" },
   { id: "e12", type: "satisfies", source: "cap-payments", target: "req-pci" },
   { id: "e13", type: "satisfies", source: "cap-payments", target: "req-latency" },
   { id: "e14", type: "satisfies", source: "cap-auth", target: "req-gdpr" },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useRef } from "react"
 import type {
   GraphModel,
@@ -23,7 +23,7 @@ import { GraphOverlayPanel } from "./graph-overlay-panel"
 import { GraphLegend } from "./graph-legend"
 import { GraphMinimap } from "./graph-minimap"
 import { useGraphExplorer } from "./use-graph-explorer"
-import { buildSpatialMemoryKey } from "./spatial-memory"
+import { buildAnalyticalViewScope, buildSpatialMemoryKey } from "./spatial-memory"
 
 export interface GraphExplorerProps {
   readonly model: GraphModel
@@ -107,7 +107,33 @@ export function GraphExplorer({
   const hasOverlays = (overlays?.length ?? 0) > 0
 
   const activeLayoutId = viewState.layoutId ?? renderer.availableLayouts[0]?.id
-  const spatialMemoryKey = buildSpatialMemoryKey(viewIdentity, renderer.id, activeLayoutId ?? "default")
+
+  // Effective active-overlay + focus-id identity, only meaningful while overlay
+  // focus restriction ("Impacted only") is on. Built here (where overlays are
+  // in scope) so the analytical-scope derivation itself stays renderer- and
+  // overlay-shape-neutral. `activeOverlayIds === undefined` means "all supplied
+  // overlays active" (locked overlay semantics).
+  const overlayRestrictionIdentity = useMemo(() => {
+    if (viewState.overlay?.restrictToOverlayFocus !== true) return ""
+    const activeIds = viewState.overlay?.activeOverlayIds
+    const activeOverlays = activeIds
+      ? (overlays ?? []).filter((o) => activeIds.includes(o.id))
+      : (overlays ?? [])
+    const ids = activeOverlays.map((o) => o.id).sort()
+    const focus = activeOverlays
+      .flatMap((o) => [...(o.focusNodeIds ?? []), ...(o.focusEdgeIds ?? [])])
+      .sort()
+    return `${ids.join(",")}#${focus.join(",")}`
+  }, [overlays, viewState.overlay])
+
+  // User-driven analytical restriction identity → a distinct spatial workspace.
+  const analyticalViewScope = buildAnalyticalViewScope(viewState, overlayRestrictionIdentity)
+  const spatialMemoryKey = buildSpatialMemoryKey(
+    viewIdentity,
+    renderer.id,
+    activeLayoutId ?? "default",
+    analyticalViewScope,
+  )
   const filters = viewState.filters ?? {}
   const filtersActive =
     (filters.nodeTypes?.length ?? 0) > 0 ||
