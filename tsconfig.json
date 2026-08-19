@@ -19,7 +19,17 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@neoarc/graph-contracts": ["./src/neoarc-graph-contracts/index.ts"],
+      "@neoarc/graph-contracts/*": ["./src/neoarc-graph-contracts/*"],
+      "@neoarc/graph-core": ["./src/neoarc-graph-core/index.ts"],
+      "@neoarc/graph-core/*": ["./src/neoarc-graph-core/*"],
+      "@neoarc/graph-renderer": ["./src/neoarc-graph-renderer/index.ts"],
+      "@neoarc/graph-renderer/*": ["./src/neoarc-graph-renderer/*"],
+      "@neoarc/graph-cytoscape": ["./src/neoarc-graph-cytoscape/index.ts"],
+      "@neoarc/graph-cytoscape/*": ["./src/neoarc-graph-cytoscape/*"],
+      "@neoarc/graph-ui": ["./src/neoarc-graph-ui/index.ts"],
+      "@neoarc/graph-ui/*": ["./src/neoarc-graph-ui/*"]
     }
   },
   "include": [
