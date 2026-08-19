@@ -117,6 +117,36 @@ Favor local/incremental layout behavior:
 
 Do not sacrifice architecture for perfect layout polish.
 
+Automatic graph-data updates must preserve the positions of all surviving nodes wherever practical. Full graph
+re-layout must not occur automatically merely because nodes or relationships were added, updated, or removed.
+
+### Continuous graph spatial stability
+
+This locks the behavior above into a concrete, renderer-neutral contract:
+
+- No auto-randomize on automatic topology change (add/update/remove), for **any** layout — not just fCoSE. A layout
+  without incremental-settle support (e.g. Hierarchy/breadthfirst) must leave existing positions untouched and only
+  seed new nodes; it must never silently re-run its full algorithm just because the model changed. Whether a given
+  layout can settle incrementally is a per-layout, renderer-declared capability, not something the UI/core layers
+  infer.
+- Deterministic seeding for genuinely new nodes, prioritizing: previously-known position (if this GraphId was seen
+  before, e.g. returning from collapse/filter/focus) → same-container connected neighbor / container centroid → other
+  connected neighbor → global centroid, with a small deterministic offset so simultaneous new nodes don't stack.
+- Fixed constraints (where the active layout supports them) target simple/surviving leaf nodes, not compound parent
+  containers.
+- Renderer-neutral session-scoped spatial memory restores positions + viewport across view remounts, keyed by view
+  identity + renderer id + layout id (never by `GraphModel.revision`), reconciling surviving ids. The same key also
+  acts as a save/restore boundary while a view stays mounted: switching layout or view identity without unmounting
+  must still snapshot the arrangement being left and restore the arrangement being returned to.
+- Node positions are remembered even while a node is temporarily absent from the rendered view (collapsed, filtered
+  out, focused away, or hidden by a layout/view-identity switch) so collapse→expand, filter→unfilter, focus→reset,
+  and Explore→Hierarchy→Explore round-trips all restore the same layout, not just cross-session/model-revision
+  changes.
+- One explicit Re-layout affordance is the only way to force a deliberate full recompute; automatic updates never
+  substitute for it.
+- Selection is user intent and is never repurposed to indicate system/agent-driven changes; change visibility for
+  agent updates is a structured summary in this slice, with full overlay-based highlighting deferred to G3.
+
 ## Search
 
 Support:

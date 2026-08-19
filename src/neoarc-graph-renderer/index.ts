@@ -13,4 +13,5 @@ export type {
   RendererLayoutDescriptor,
   GraphNodePosition,
   GraphBoundingBox,
+  GraphSpatialSnapshot,
 } from "./renderer"
