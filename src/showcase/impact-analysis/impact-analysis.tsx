@@ -231,37 +231,23 @@ export function ImpactAnalysis() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1fr_22rem]">
-        <div className="min-h-0">
-          <GraphExplorer
-            model={model}
-            registries={showcaseRegistries}
-            renderer={cytoscapeRenderer}
-            overlays={overlays}
-            overlayRestrictLabel="Impacted only"
-            initialViewState={{
-              layoutId: "fcose",
-              selectedNodeIds: [...IMPACT_CHANGE_INTENT.rootEntityIds],
-              overlay: { showOverlay: true, showPaths: true },
-            }}
-            viewIdentity="impact-spring-ai"
-            renderNodeExtras={renderNodeExtras}
-            renderEdgeExtras={renderEdgeExtras}
-            onIntent={handleIntent}
-          />
-        </div>
-
-        {reportOpen ? (
-          <aside className="min-h-0 overflow-y-auto rounded-lg border border-border bg-card">
-            <ImpactReport
-              overlay={IMPACT_RESULT}
-              model={model}
-              registries={showcaseRegistries}
-              changeIntentTitle={IMPACT_CHANGE_INTENT.title}
-              freshness={freshness}
-            />
-          </aside>
-        ) : null}
+      <div className="min-h-0 flex-1">
+        <GraphExplorer
+          model={model}
+          registries={showcaseRegistries}
+          renderer={cytoscapeRenderer}
+          overlays={overlays}
+          overlayRestrictLabel="Impacted only"
+          initialViewState={{
+            layoutId: "fcose",
+            selectedNodeIds: [...IMPACT_CHANGE_INTENT.rootEntityIds],
+            overlay: { showOverlay: true, showPaths: true },
+          }}
+          viewIdentity="impact-spring-ai"
+          renderNodeExtras={renderNodeExtras}
+          renderEdgeExtras={renderEdgeExtras}
+          onIntent={handleIntent}
+        />
       </div>
 
       <footer
@@ -270,6 +256,26 @@ export function ImpactAnalysis() {
       >
         {status}
       </footer>
+
+      {/* Impact report: a floating drawer so it never steals canvas width. */}
+      {reportOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close impact report"
+            className="fixed inset-0 z-40 bg-background/60"
+            onClick={() => setReportOpen(false)}
+          />
+          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md overflow-y-auto border-l border-border bg-card shadow-xl">
+            <ImpactReport
+              overlay={IMPACT_RESULT}
+              model={model}
+              changeIntentTitle={IMPACT_CHANGE_INTENT.title}
+              freshness={freshness}
+            />
+          </aside>
+        </>
+      ) : null}
     </div>
   )
 }
