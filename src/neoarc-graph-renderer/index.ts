@@ -11,4 +11,6 @@ export type {
   GraphRendererMountOptions,
   GraphRendererTheme,
   RendererLayoutDescriptor,
+  GraphNodePosition,
+  GraphBoundingBox,
 } from "./renderer"

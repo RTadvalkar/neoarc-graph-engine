@@ -15,7 +15,8 @@ export function buildStylesheet(theme: GraphRendererTheme): StylesheetJson {
         "background-color": "data(bg)",
         "border-color": "data(border)",
         "border-width": 2,
-        label: "data(label)",
+        // Medium zoom (the resting default): icon + label.
+        label: "data(labelDefault)",
         color: "data(text)",
         "font-size": 11,
         "font-weight": 500,
@@ -31,6 +32,25 @@ export function buildStylesheet(theme: GraphRendererTheme): StylesheetJson {
       },
     },
     {
+      // High zoom: type-driven, richer node — icon + label + a supplied
+      // property. Never applied to compound containers (see `container`
+      // below), which keep a stable identity at every zoom level.
+      selector: "node.zoom-rich",
+      style: { label: "data(labelRich)", "text-max-width": "160px" },
+    },
+    {
+      // Low zoom: compact identity — icon glyph only.
+      selector: "node.zoom-compact",
+      style: { label: "data(labelCompact)", "font-size": 9 },
+    },
+    {
+      // Very low zoom: leaf nodes collapse to an unlabeled dot so only
+      // compound service/group structure (which never gets this class)
+      // remains legible — "group/service emphasis".
+      selector: "node.zoom-hidden",
+      style: { label: "", width: 14, height: 14, padding: "4px" },
+    },
+    {
       selector: "node.container",
       style: {
         "background-opacity": 0.35,
@@ -44,6 +64,17 @@ export function buildStylesheet(theme: GraphRendererTheme): StylesheetJson {
         padding: "26px",
         width: "label",
         height: "label",
+      },
+    },
+    {
+      // A collapsed compound group still renders — folded children are a
+      // view-only concern — but reads visually as "closed": a solid border
+      // and stronger fill instead of the expanded dashed outline.
+      selector: "node.container.collapsed",
+      style: {
+        "background-opacity": 0.55,
+        "border-style": "solid",
+        "border-width": 2.5,
       },
     },
     {

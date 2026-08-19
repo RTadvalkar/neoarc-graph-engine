@@ -41,6 +41,20 @@ export interface RendererLayoutDescriptor {
   readonly label: string
 }
 
+/** Plain 2D point in the renderer's model space. Never a renderer-specific type. */
+export interface GraphNodePosition {
+  readonly x: number
+  readonly y: number
+}
+
+/** Axis-aligned bounding box in the renderer's model space. */
+export interface GraphBoundingBox {
+  readonly x1: number
+  readonly y1: number
+  readonly x2: number
+  readonly y2: number
+}
+
 /** Everything a renderer needs to draw a view and speak semantic events. */
 export interface GraphRendererMountOptions {
   readonly container: HTMLElement
@@ -65,6 +79,15 @@ export interface GraphRendererHandle {
   center(): void
   getViewport(): GraphViewport
   setViewport(viewport: GraphViewport): void
+  /**
+   * Current node positions in renderer model space, for a minimap or other
+   * lightweight spatial overview. Plain numbers only — no renderer types.
+   */
+  getNodePositions(): ReadonlyMap<string, GraphNodePosition>
+  /** Bounding box of all currently drawn elements, in the same model space. */
+  getBoundingBox(): GraphBoundingBox
+  /** Subscribe to position/viewport changes (layout settle, pan, zoom, drag). */
+  onSpatialChange(listener: () => void): () => void
   destroy(): void
   readonly layouts: readonly RendererLayoutDescriptor[]
 }

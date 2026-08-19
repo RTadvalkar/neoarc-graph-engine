@@ -83,6 +83,62 @@ describe("buildViewModel", () => {
   })
 })
 
+describe("collapse aggregation", () => {
+  // "svc" contains two children that each cross the group boundary to "other"
+  // via distinct edge types — collapsing must fold both into one meta-edge
+  // that retains references to both canonical edge ids.
+  const crossBoundaryModel: GraphModel = Object.freeze({
+    id: "m2",
+    revision: 1,
+    nodes: [
+      { id: "svc", type: "Service" },
+      { id: "api", type: "Api", containerId: "svc" },
+      { id: "ent", type: "Entity", containerId: "svc" },
+      { id: "other", type: "Service" },
+    ],
+    edges: [
+      { id: "e-api", type: "calls", source: "api", target: "other" },
+      { id: "e-ent", type: "dependsOn", source: "ent", target: "other" },
+      { id: "e-ent2", type: "implements", source: "ent", target: "other" },
+    ],
+  }) as GraphModel
+
+  it("folds cross-boundary edges into a meta-edge with underlying canonical ids", () => {
+    const collapsed = toggleContainerCollapsed(createInitialViewState(), "svc")
+    const vm = buildViewModel(crossBoundaryModel, collapsed)
+
+    expect(vm.nodes.map((n) => n.id).sort()).toEqual(["other", "svc"])
+    expect(vm.edges).toHaveLength(1)
+    const meta = vm.edges[0]
+    expect(meta.source).toBe("svc")
+    expect(meta.target).toBe("other")
+    expect([...(meta.aggregatedEdgeIds ?? [])].sort()).toEqual(["e-api", "e-ent", "e-ent2"])
+  })
+
+  it("expanding again restores the original, unaggregated relationships", () => {
+    const collapsed = toggleContainerCollapsed(createInitialViewState(), "svc")
+    const expanded = toggleContainerCollapsed(collapsed, "svc")
+    const vm = buildViewModel(crossBoundaryModel, expanded)
+
+    expect(vm.edges.map((e) => e.id).sort()).toEqual(["e-api", "e-ent", "e-ent2"])
+    expect(vm.edges.every((e) => !e.aggregatedEdgeIds)).toBe(true)
+  })
+
+  it("applies the edgeTypes filter before aggregation, excluding non-matching canonical edges from the meta-edge", () => {
+    const collapsedAndFiltered = toggleContainerCollapsed(
+      createInitialViewState({ filters: { edgeTypes: ["dependsOn"] } }),
+      "svc",
+    )
+    const vm = buildViewModel(crossBoundaryModel, collapsedAndFiltered)
+
+    expect(vm.nodes.map((n) => n.id).sort()).toEqual(["other", "svc"])
+    expect(vm.edges).toHaveLength(1)
+    const meta = vm.edges[0]
+    expect(meta.label).toBe("1 relationship")
+    expect(meta.aggregatedEdgeIds).toEqual(["e-ent"])
+  })
+})
+
 describe("selection identity", () => {
   it("keeps selection stable and idempotent by id", () => {
     const s1 = selectNode(createInitialViewState(), "svc")

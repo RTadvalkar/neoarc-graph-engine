@@ -11,10 +11,12 @@ import type {
 } from "@neoarc/graph-contracts"
 import {
   buildViewModel,
+  clearExplorationFocus,
   clearSelection,
   createInitialViewState,
   selectEdge,
   selectNode,
+  setExplorationFocus,
   setFilters,
   setLayout,
   toggleContainerCollapsed,
@@ -71,6 +73,12 @@ export function useGraphExplorer(options: UseGraphExplorerOptions): GraphExplore
           break
         case "graph.focus.change":
           setViewState((s) => ({ ...s, focusedNodeId: event.nodeId }))
+          break
+        case "graph.focus.explore":
+          setViewState((s) => setExplorationFocus(s, event.focus))
+          break
+        case "graph.focus.reset":
+          setViewState((s) => clearExplorationFocus(s))
           break
         case "graph.filters.change":
           setViewState((s) => setFilters(s, event.filters))

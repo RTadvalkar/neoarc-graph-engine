@@ -17,6 +17,8 @@ export interface GraphCanvasProps {
   readonly registries: GraphRegistries
   readonly layoutId?: string
   readonly onEvent?: (event: GraphSemanticEvent) => void
+  /** Fired once the renderer mounts (and with `null` on unmount) — lets a host wire a minimap. */
+  readonly onRendererReady?: (handle: GraphRendererHandle | null) => void
   readonly className?: string
 }
 
@@ -27,6 +29,8 @@ export interface GraphCanvasHandle {
   center(): void
   runLayout(): void
   readonly layouts: readonly RendererLayoutDescriptor[]
+  /** The live renderer handle, for callers that need the spatial boundary (e.g. a minimap). */
+  getRendererHandle(): GraphRendererHandle | null
 }
 
 /**
@@ -35,14 +39,14 @@ export interface GraphCanvasHandle {
  * given. It never imports Cytoscape — swapping engines is a prop change.
  */
 export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(function GraphCanvas(
-  { renderer, viewModel, registries, layoutId, onEvent, className },
+  { renderer, viewModel, registries, layoutId, onEvent, onRendererReady, className },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const handleRef = useRef<GraphRendererHandle | null>(null)
   // Keep latest props in refs so the mount effect stays mount-only.
-  const latest = useRef({ viewModel, registries, layoutId, onEvent })
-  latest.current = { viewModel, registries, layoutId, onEvent }
+  const latest = useRef({ viewModel, registries, layoutId, onEvent, onRendererReady })
+  latest.current = { viewModel, registries, layoutId, onEvent, onRendererReady }
 
   // Mount / unmount the renderer once per renderer instance.
   useEffect(() => {
@@ -60,6 +64,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
       onEvent: (event) => latest.current.onEvent?.(event),
     })
     handleRef.current = handle
+    latest.current.onRendererReady?.(handle)
 
     // Re-resolve theme when the host toggles light/dark (class on <html>).
     const observer = new MutationObserver(() => {
@@ -74,6 +79,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
       observer.disconnect()
       handle.destroy()
       handleRef.current = null
+      latest.current.onRendererReady?.(null)
     }
   }, [renderer])
 
@@ -94,6 +100,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
       zoomBy: (factor) => handleRef.current?.zoomBy(factor),
       center: () => handleRef.current?.center(),
       runLayout: () => handleRef.current?.runLayout(),
+      getRendererHandle: () => handleRef.current,
       get layouts() {
         return handleRef.current?.layouts ?? renderer.availableLayouts
       },
