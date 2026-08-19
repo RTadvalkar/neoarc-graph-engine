@@ -1,5 +1,33 @@
 # G2 — Complex Graph Exploration
 
+# Default layout quality and mental-map preservation
+
+The current G1 showcase proves renderer functionality but its default breadth-first layout is too compressed for
+realistic multi-service relationship graphs.
+
+During G2:
+
+Add cytoscape-fcose behind the existing Cytoscape renderer boundary and make a tuned fCoSE-based Explore layout the
+preferred/default layout for complex compound relationship graphs.
+Keep Hierarchy/breadth-first as an alternate layout for tree/DAG-oriented views.
+Tune layout spacing for readability, including node separation, node repulsion, ideal edge length, compound nesting,
+padding, and label dimensions where supported.
+Evaluate component packing where useful for disconnected components.
+Aim to avoid node/group overlap and reduce unnecessary edge crossing. Do not claim arbitrary dense graphs can always be
+crossing-free.
+Preserve the user's mental map during expansion/collapse. Existing visible nodes should retain positions where
+practical; newly expanded nodes should enter near the expansion anchor rather than causing a full-graph reshuffle.
+Do not persist coordinates to backend/storage in this slice.
+Replace the current topology-change “remove all → rebuild all → full layout” behavior where necessary with incremental
+graph element updates that preserve existing positions.
+Remove the current Cytoscape wheelSensitivity: 0.2 override and use the normal/default wheel sensitivity unless browser
+verification proves another value is clearly better.
+Keep all fCoSE/Cytoscape-specific configuration entirely inside neoarc-graph-cytoscape. GraphRenderer, Graph UI and
+graph contracts must remain renderer-neutral.
+
+Manual browser verification is sufficient for layout cleanliness, wheel zoom feel and interaction quality. Add automated
+tests only where position/identity/canonical-graph invariants would otherwise be difficult to verify.
+
 ## Entry
 
 Begin only after explicit G1 approval.
