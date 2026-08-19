@@ -15,12 +15,20 @@ export default function Home() {
             renderer v1.
           </p>
         </div>
-        <Link
-          href="/graph-lab"
-          className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
-        >
-          Open Graph Lab
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/graph-lab"
+            className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90"
+          >
+            Open Graph Lab
+          </Link>
+          <Link
+            href="/impact-analysis"
+            className="inline-flex h-11 items-center justify-center rounded-md border border-border px-6 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+          >
+            Open Impact Analysis
+          </Link>
+        </div>
       </main>
     </div>
   )

@@ -10,9 +10,17 @@ import type { GraphViewState } from "./graph-view"
  * Explorer without exposing any routing/backend detail.
  */
 export interface GraphViewDescriptor {
+  /** Optional stable id for this view (product-defined). */
+  readonly id?: string
+  /** Optional human-readable title for the view. */
+  readonly title?: string
   readonly model: GraphModel
   readonly nodeTypes?: readonly GraphNodeTypeDefinition[]
   readonly edgeTypes?: readonly GraphEdgeTypeDefinition[]
   readonly overlays?: readonly GraphOverlay[]
+  /**
+   * Active overlay selection lives in `initialViewState.overlay.activeOverlayIds`
+   * — deliberately not duplicated as a root-level field.
+   */
   readonly initialViewState?: Partial<GraphViewState>
 }

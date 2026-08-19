@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRef } from "react"
 import type {
   GraphModel,
+  GraphOverlay,
   GraphQueryRequest,
   GraphSemanticEvent,
   GraphTraversalDirection,
@@ -18,6 +19,7 @@ import { GraphToolbar } from "./graph-toolbar"
 import { GraphInspector } from "./graph-inspector"
 import { GraphNodeList } from "./graph-node-list"
 import { GraphFiltersPanel } from "./graph-filters-panel"
+import { GraphOverlayPanel } from "./graph-overlay-panel"
 import { GraphLegend } from "./graph-legend"
 import { GraphMinimap } from "./graph-minimap"
 import { useGraphExplorer } from "./use-graph-explorer"
@@ -28,6 +30,10 @@ export interface GraphExplorerProps {
   readonly registries: GraphRegistries
   readonly renderer: GraphRenderer
   readonly initialViewState?: Partial<GraphViewState>
+  /** Supplied overlays (impact/search/risk). When present, the overlay panel is enabled. */
+  readonly overlays?: readonly GraphOverlay[]
+  /** Label for the overlay focus-restriction toggle (e.g. "Impacted only"). */
+  readonly overlayRestrictLabel?: string
   /** Authoritative intents (expand/search/path/impact) the host must fulfill. */
   readonly onIntent?: (event: GraphSemanticEvent) => void
   /**
@@ -56,6 +62,8 @@ export function GraphExplorer({
   registries,
   renderer,
   initialViewState,
+  overlays,
+  overlayRestrictLabel,
   onIntent,
   viewIdentity = "default",
   renderNodeExtras,
@@ -65,10 +73,22 @@ export function GraphExplorer({
   const canvasRef = useRef<GraphCanvasHandle | null>(null)
   const [rendererHandle, setRendererHandle] = useState<GraphRendererHandle | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [overlayOpen, setOverlayOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const controller = useGraphExplorer({ model, initialViewState, onIntent })
-  const { viewState, viewModel, dispatch, setQuery, setFilterState, setLayoutId, toggleCollapse } =
-    controller
+  const controller = useGraphExplorer({ model, initialViewState, overlays, onIntent })
+  const {
+    viewState,
+    viewModel,
+    overlayFreshness,
+    unresolvedOverlayNodeIds,
+    unresolvedOverlayEdgeIds,
+    dispatch,
+    setQuery,
+    setFilterState,
+    setLayoutId,
+    toggleCollapse,
+  } = controller
+  const hasOverlays = (overlays?.length ?? 0) > 0
 
   const activeLayoutId = viewState.layoutId ?? renderer.availableLayouts[0]?.id
   const spatialMemoryKey = buildSpatialMemoryKey(viewIdentity, renderer.id, activeLayoutId ?? "default")
@@ -114,6 +134,8 @@ export function GraphExplorer({
         onToggleFullscreen={() => setIsFullscreen((v) => !v)}
         onToggleFilters={() => setFiltersOpen((v) => !v)}
         filtersActive={filtersActive}
+        onToggleOverlays={hasOverlays ? () => setOverlayOpen((v) => !v) : undefined}
+        overlaysActive={overlayOpen}
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[16rem_1fr_20rem]">
@@ -154,6 +176,20 @@ export function GraphExplorer({
                 filters={filters}
                 onChange={setFilterState}
                 onClose={() => setFiltersOpen(false)}
+              />
+            </div>
+          ) : null}
+
+          {hasOverlays && overlayOpen ? (
+            <div className="absolute inset-y-0 right-0 w-72 border-l border-border bg-card shadow-lg">
+              <GraphOverlayPanel
+                overlays={overlays ?? []}
+                view={viewState.overlay}
+                freshness={overlayFreshness}
+                unresolvedNodeIds={unresolvedOverlayNodeIds}
+                unresolvedEdgeIds={unresolvedOverlayEdgeIds}
+                dispatch={dispatch}
+                restrictLabel={overlayRestrictLabel}
               />
             </div>
           ) : null}

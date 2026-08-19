@@ -1,5 +1,6 @@
 import type { GraphId, GraphProperties } from "./graph-model"
 import type { GraphTraversalDirection } from "./graph-query"
+import type { GraphAppliedOverlayEdgeState, GraphAppliedOverlayNodeState } from "./graph-overlay"
 
 /**
  * Derived view concerns. These NEVER mutate canonical GraphModel facts.
@@ -40,6 +41,38 @@ export interface GraphExplorationFocus {
   readonly direction: GraphTraversalDirection
 }
 
+/**
+ * Derived view-only overlay controls. Same tier as `filters` — never a
+ * canonical fact. Each concern is independently gated:
+ *
+ * - state presentation is controlled by `showOverlay`
+ * - supporting-path presentation by `showPaths` (+ optional `activePathId`)
+ * - focus restriction by `restrictToOverlayFocus`
+ *
+ * so hiding state presentation never disables paths or focus restriction, and
+ * never suppresses freshness / unresolved-reference metadata.
+ */
+export interface GraphOverlayViewState {
+  /**
+   * Which supplied overlays are active. LOCKED semantics:
+   * - `undefined` → all supplied overlays active (default)
+   * - `[]`        → explicitly none active (distinct from undefined)
+   */
+  readonly activeOverlayIds?: readonly string[]
+  /** Hide/show overlay node/edge STATE presentation only. Default: shown. */
+  readonly showOverlay?: boolean
+  /** Hide/show supplied supporting paths. Independent of `showOverlay`. */
+  readonly showPaths?: boolean
+  /** When set, restrict path emphasis to this single supplied path id. */
+  readonly activePathId?: string
+  /**
+   * Restrict the visible graph to the active overlays' supplied focus id set
+   * (`focusNodeIds`/`focusEdgeIds`). Generic name; a product may surface it as
+   * "Impacted only". Independent of `showOverlay`.
+   */
+  readonly restrictToOverlayFocus?: boolean
+}
+
 export interface GraphViewState {
   readonly selectedNodeIds: readonly GraphId[]
   readonly selectedEdgeIds: readonly GraphId[]
@@ -52,6 +85,8 @@ export interface GraphViewState {
   readonly collapsedContainerIds?: readonly GraphId[]
   readonly pinnedNodeIds?: readonly GraphId[]
   readonly filters?: GraphFilterState
+  /** Derived overlay view controls (impact/search/risk presentation). */
+  readonly overlay?: GraphOverlayViewState
   readonly layoutId?: GraphLayoutId
   readonly viewport?: GraphViewport
 }
@@ -71,6 +106,14 @@ export interface GraphViewNode {
   readonly focused: boolean
   readonly pinned: boolean
   readonly searchHighlighted: boolean
+  /**
+   * Supplied overlay states applied to this node (from active overlays, when
+   * `showOverlay !== false`). Multiple overlays may contribute; all are
+   * retained in supplied order with no precedence inference.
+   */
+  readonly overlays?: readonly GraphAppliedOverlayNodeState[]
+  /** Supplied supporting-path ids this node participates in (view-only). */
+  readonly onSupportingPathIds?: readonly string[]
 }
 
 /** An edge as it should currently appear. Purely derived. */
@@ -88,6 +131,16 @@ export interface GraphViewEdge {
    * for. Aggregation must always retain references to the underlying facts.
    */
   readonly aggregatedEdgeIds?: readonly GraphId[]
+  /**
+   * Supplied overlay states applied to this edge. A state matches when its
+   * `edgeId` equals this edge's `id` OR appears in `aggregatedEdgeIds`, so a
+   * canonical edge reference still lights up a collapsed meta-edge. All
+   * matching states are retained (`viaEdgeId` records how each matched); no
+   * semantic precedence is inferred between them.
+   */
+  readonly overlays?: readonly GraphAppliedOverlayEdgeState[]
+  /** Supplied supporting-path ids this edge participates in (view-only). */
+  readonly onSupportingPathIds?: readonly string[]
 }
 
 export interface GraphViewModel {
