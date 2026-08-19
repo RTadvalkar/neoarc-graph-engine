@@ -2,6 +2,7 @@ import type { ElementDefinition } from "cytoscape"
 import type { GraphViewModel } from "@neoarc/graph-contracts"
 import type { EdgeTypeRegistry, IconRegistry, NodeTypeRegistry } from "@neoarc/graph-core"
 import type { GraphRendererTheme } from "@neoarc/graph-renderer"
+import { mapNodeShapeToCytoscape } from "./shape-mapping"
 
 /**
  * Translates a renderer-neutral GraphViewModel into Cytoscape element
@@ -27,9 +28,11 @@ export function classesFor(flags: {
   focused?: boolean
   highlighted?: boolean
   container?: boolean
+  pill?: boolean
 }): string {
   const classes: string[] = []
   if (flags.container) classes.push("container")
+  if (flags.pill) classes.push("pill")
   if (flags.selected) classes.push("selected")
   if (flags.focused) classes.push("focused")
   if (flags.highlighted) classes.push("highlight")
@@ -59,7 +62,7 @@ export function mapViewModelToElements(
         id: node.id,
         label: node.label ?? def.label ?? node.id,
         parent: node.containerId,
-        shape: def.shape ?? "round-rectangle",
+        shape: isContainer ? undefined : mapNodeShapeToCytoscape(def.shape),
         glyph: icon.glyph,
         bg,
         border,
@@ -70,6 +73,10 @@ export function mapViewModelToElements(
         focused: node.focused,
         highlighted: node.searchHighlighted,
         container: isContainer,
+        // "pill" is a Cytoscape-only presentation refinement (tighter corner
+        // radius) layered on top of the mapped `round-rectangle` shape. It is
+        // derived from the semantic shape, never stored on the node record.
+        pill: !isContainer && def.shape === "pill",
       }),
     })
   }

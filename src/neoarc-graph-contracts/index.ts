@@ -25,6 +25,7 @@ export type {
   GraphNodeTypeDefinition,
   GraphEdgeTypeDefinition,
 } from "./graph-type-definitions"
+export { DEFAULT_NODE_SHAPE } from "./graph-type-definitions"
 
 export type {
   GraphLayoutId,
