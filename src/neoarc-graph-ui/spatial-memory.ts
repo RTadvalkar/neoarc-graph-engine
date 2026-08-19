@@ -32,12 +32,9 @@ export function buildSpatialMemoryKey(
 }
 
 export function getSpatialSnapshot(key: string): GraphSpatialSnapshot | undefined {
-  const s = snapshots.get(key)
-  console.log("[v0] getSpatialSnapshot", key, "found:", !!s, "positions:", s?.positions.size, "allKeys:", [...snapshots.keys()])
-  return s
+  return snapshots.get(key)
 }
 
 export function setSpatialSnapshot(key: string, snapshot: GraphSpatialSnapshot): void {
-  console.log("[v0] setSpatialSnapshot", key, "positions:", snapshot.positions.size)
   snapshots.set(key, snapshot)
 }

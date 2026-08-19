@@ -105,12 +105,6 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.currentViewModel = options.viewModel
 
     const restoreNodePositions = options.restoreNodePositions
-    console.log(
-      "[v0] mount received restoreNodePositions:",
-      restoreNodePositions
-        ? JSON.stringify([...restoreNodePositions.entries()])
-        : restoreNodePositions,
-    )
     if (restoreNodePositions) {
       for (const [id, pos] of restoreNodePositions) this.lastKnownPositions.set(id, pos)
     }
@@ -140,14 +134,17 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       style: buildStylesheet(this.theme),
       minZoom: 0.05,
       maxZoom: 3,
+      // Cytoscape runs an implicit init layout (defaulting to "grid") when
+      // no `layout` is specified, which silently overwrites any explicit
+      // per-element `position` — including every restored/seeded position
+      // set above. "preset" is a no-op layout that leaves elements exactly
+      // where their `position` field puts them, so mount is the sole
+      // authority over initial placement and the explicit `runLayout(...)`
+      // call below runs against real (not grid-clobbered) positions.
+      layout: { name: "preset" },
     })
 
     this.wireEvents()
-
-    console.log(
-      "[v0] mount seeded positions:",
-      this.cy.nodes().map((n) => `${n.id()}=(${Math.round(n.position().x)},${Math.round(n.position().y)})`),
-    )
 
     const restoredNodeIds = restoreNodePositions
       ? [...restoreNodePositions.keys()].filter((id) => this.nodeIds.has(id))
@@ -484,11 +481,6 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       if (randomize) this.fit()
       this.updateSemanticZoom()
       this.notifySpatialChange()
-      console.log(
-        "[v0] layoutstop randomize:", randomize,
-        "fixed:", fixedNodeConstraint?.length,
-        "positions:", this.cy.nodes().map((n) => `${n.id()}=(${Math.round(n.position().x)},${Math.round(n.position().y)})`),
-      )
     })
     layout.run()
   }
