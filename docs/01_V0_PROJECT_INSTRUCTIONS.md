@@ -83,6 +83,55 @@ Provide registry-driven extension seams for:
 
 Custom renderers are an escape hatch, not the default mechanism.
 
+## Renderer-neutral node shapes
+
+`GraphNodeTypeDefinition` must support renderer-neutral node shape selection.
+
+Shape is normally configured at node-type level, not arbitrarily per graph record.
+
+Use a semantic graph shape abstraction such as:
+
+GraphNodeShape =
+rectangle
+rounded-rectangle
+ellipse
+circle
+diamond
+hexagon
+octagon
+triangle
+pill
+container
+tag
+generic
+
+Exact supported values may evolve, but they must remain renderer-neutral.
+
+Never expose Cytoscape-specific shape names or renderer configuration through graph contracts.
+
+The renderer adapter maps `GraphNodeShape` into renderer-specific primitives:
+
+GraphNodeTypeDefinition
+→ GraphNodeShape
+→ GraphRendererAdapter
+→ Cytoscape representation
+
+A future Ogma/yFiles/Sigma renderer must be able to interpret the same node type definition.
+
+Unknown or unsupported shapes must fall back safely to `generic`.
+
+Normal visual precedence is:
+
+generic fallback
+→ node type definition
+→ status/facet styling
+→ safe instance presentation hints
+→ graph overlays
+
+Do not create combinatorial node types merely to change appearance.
+
+Custom NodeRendererRegistry entries remain an escape hatch for genuinely specialized node rendering.
+
 ## Interaction semantics
 
 Semantic events may include concepts such as:

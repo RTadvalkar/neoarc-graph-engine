@@ -183,3 +183,35 @@ Impact is supplied by an external authoritative result.
 Graph overlays must not infer impact.
 
 The same overlay architecture should later support risk, search, change sets, provenance, security, or test coverage.
+
+## Node visual definition boundary
+
+Node appearance is part of the renderer-neutral type catalog.
+
+`GraphNodeTypeDefinition` may declaratively define:
+
+- semantic shape
+- icon key
+- tone
+- size
+- border treatment
+- label rules
+- semantic zoom behavior
+
+These are semantic visual descriptors, not Cytoscape configuration.
+
+Renderer-specific mapping belongs only inside the renderer implementation.
+
+Node records should normally reference a node type and optional status/facets rather than carrying arbitrary renderer
+styling.
+
+Example:
+
+type: requirement
+status: approved
+facets: [security]
+
+The type catalog and visual rules decide how this appears.
+
+A node type such as `Deployment` must be able to change from rectangle to hexagon through configuration without changing
+graph-core.
