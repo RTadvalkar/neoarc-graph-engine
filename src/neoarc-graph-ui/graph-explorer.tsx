@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRef } from "react"
 import type {
   GraphModel,
@@ -48,8 +48,6 @@ export interface GraphExplorerProps {
   readonly viewIdentity?: string
   readonly renderNodeExtras?: (node: GraphViewNode) => React.ReactNode
   readonly renderEdgeExtras?: (edge: GraphViewEdge) => React.ReactNode
-  /** When true, fit the graph to the viewport once the renderer is ready. */
-  readonly fitOnLoad?: boolean
   readonly className?: string
 }
 
@@ -70,7 +68,6 @@ export function GraphExplorer({
   viewIdentity = "default",
   renderNodeExtras,
   renderEdgeExtras,
-  fitOnLoad,
   className,
 }: GraphExplorerProps) {
   const canvasRef = useRef<GraphCanvasHandle | null>(null)
@@ -101,14 +98,6 @@ export function GraphExplorer({
     (filters.edgeTypes?.length ?? 0) > 0 ||
     (filters.statuses?.length ?? 0) > 0 ||
     (filters.facets?.length ?? 0) > 0
-
-  // Honor descriptor `fitOnLoad` minimally via the existing fit capability:
-  // once the renderer reports ready, fit the graph to the viewport once.
-  useEffect(() => {
-    if (fitOnLoad && rendererHandle) {
-      canvasRef.current?.fit()
-    }
-  }, [fitOnLoad, rendererHandle])
 
   const handleExpand = (request: GraphQueryRequest) => {
     dispatch({ type: "graph.expand.request", request })

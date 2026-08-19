@@ -26,5 +26,4 @@ export const IMPACT_VIEW_DESCRIPTOR: GraphViewDescriptor = {
       showPaths: true,
     },
   },
-  fitOnLoad: true,
 }

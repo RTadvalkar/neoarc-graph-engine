@@ -239,9 +239,9 @@ export function ImpactAnalysis() {
       <div className="min-h-0 flex-1">
         <GraphExplorer
           // Descriptor-driven handoff: model/overlays/initialViewState/
-          // viewIdentity/fitOnLoad all come from IMPACT_VIEW_DESCRIPTOR.
-          // `model` is the live (possibly patched) copy seeded from the
-          // descriptor; registries are supplied separately (per slice scope).
+          // viewIdentity all come from IMPACT_VIEW_DESCRIPTOR. `model` is the
+          // live (possibly patched) copy seeded from the descriptor;
+          // registries are supplied separately (per slice scope).
           model={model}
           registries={showcaseRegistries}
           renderer={cytoscapeRenderer}
@@ -249,7 +249,6 @@ export function ImpactAnalysis() {
           overlayRestrictLabel="Impacted only"
           initialViewState={IMPACT_VIEW_DESCRIPTOR.initialViewState}
           viewIdentity={IMPACT_VIEW_DESCRIPTOR.id}
-          fitOnLoad={IMPACT_VIEW_DESCRIPTOR.fitOnLoad}
           renderNodeExtras={renderNodeExtras}
           renderEdgeExtras={renderEdgeExtras}
           onIntent={handleIntent}

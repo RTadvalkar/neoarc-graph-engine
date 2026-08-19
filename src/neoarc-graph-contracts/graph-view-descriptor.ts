@@ -23,6 +23,4 @@ export interface GraphViewDescriptor {
    * — deliberately not duplicated as a root-level field.
    */
   readonly initialViewState?: Partial<GraphViewState>
-  /** When true, the explorer fits the graph to the viewport on load. */
-  readonly fitOnLoad?: boolean
 }
