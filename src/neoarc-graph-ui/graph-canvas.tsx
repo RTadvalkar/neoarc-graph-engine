@@ -55,11 +55,19 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const handleRef = useRef<GraphRendererHandle | null>(null)
-  // The spatial-memory key this instance is currently "sitting on" — used by
-  // the key-change effect to know what to save (the key being left) vs. what
-  // to restore (the key being entered), and by final unmount to save the last
-  // active arrangement.
+  // The spatial-memory key / layout id this instance is currently "sitting
+  // on" — used by the combined layout+spatial effect below to know what to
+  // save (the key/layout being left) vs. what to restore (the key/layout
+  // being entered), and by final unmount to save the last active
+  // arrangement. Both are (re-)initialized to the mount-time prop values —
+  // either at declaration (first-ever mount) or inside the mount effect
+  // (every subsequent mount, e.g. after a `renderer` swap) — so the combined
+  // effect's very first run after any mount always sees "nothing changed"
+  // and correctly no-ops instead of re-triggering a layout that mount-time
+  // restoration (or the constructor's own initial layout decision) already
+  // handled.
   const activeSpatialKeyRef = useRef<string | undefined>(spatialMemoryKey)
+  const activeLayoutIdRef = useRef<string | undefined>(layoutId)
   // Keep latest props in refs so the mount effect stays mount-only.
   const latest = useRef({ viewModel, registries, layoutId, onEvent, onRendererReady, spatialMemoryKey })
   latest.current = { viewModel, registries, layoutId, onEvent, onRendererReady, spatialMemoryKey }
@@ -84,6 +92,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
     })
     handleRef.current = handle
     activeSpatialKeyRef.current = spatialMemoryKey
+    activeLayoutIdRef.current = layoutId
     latest.current.onRendererReady?.(handle)
 
     // Re-resolve theme when the host toggles light/dark (class on <html>).
@@ -113,31 +122,49 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
     handleRef.current?.setViewModel(viewModel)
   }, [viewModel])
 
-  // Push layout switches.
+  // Layout switching + spatial-memory boundary: the single owner of both
+  // concerns, because they're inseparable — whether an explicit layout
+  // switch may skip its "one intentional fresh layout" depends entirely on
+  // whether a spatial snapshot exists for the layout being entered.
+  //
+  // Compares live props against `activeLayoutIdRef` / `activeSpatialKeyRef`,
+  // which were seeded to the exact mount-time values (at declaration for a
+  // fresh instance, or inside the mount effect for any later remount) —
+  // so the very first run of this effect after any mount always sees no
+  // change and no-ops, instead of redoing the layout decision `renderer.mount`
+  // (via `restoreNodePositions`/`restoreViewport`, or its own from-scratch
+  // layout) already made. Only an ACTUAL change to `layoutId` or
+  // `spatialMemoryKey` after mount reaches the branches below.
   useEffect(() => {
-    if (layoutId) handleRef.current?.setLayout(layoutId)
-  }, [layoutId])
+    const previousLayoutId = activeLayoutIdRef.current
+    const previousSpatialKey = activeSpatialKeyRef.current
+    const layoutChanged = previousLayoutId !== layoutId
+    const keyChanged = previousSpatialKey !== spatialMemoryKey
 
-  // Spatial-memory boundary: fires when `spatialMemoryKey` changes without
-  // the renderer unmounting (e.g. switching layout or scenario while staying
-  // mounted). Runs after the view-model and layout-switch effects above, so
-  // it observes the post-switch state before deciding what to snapshot/
-  // restore. Save the arrangement being left, then restore the arrangement
-  // being entered if this key has ever been visited before; otherwise leave
-  // whatever the layout/view-model effects just produced untouched.
-  useEffect(() => {
-    const previousKey = activeSpatialKeyRef.current
-    if (previousKey === spatialMemoryKey) return
-    const handle = handleRef.current
-    if (handle) {
-      if (previousKey) setSpatialSnapshot(previousKey, handle.getSpatialSnapshot())
-      if (spatialMemoryKey) {
-        const snapshot = getSpatialSnapshot(spatialMemoryKey)
-        if (snapshot) handle.restoreSpatialSnapshot(snapshot)
+    if (layoutChanged || keyChanged) {
+      const handle = handleRef.current
+      if (handle) {
+        // Save the arrangement being left under the key it was sitting on.
+        if (previousSpatialKey) setSpatialSnapshot(previousSpatialKey, handle.getSpatialSnapshot())
+
+        const targetSnapshot = spatialMemoryKey ? getSpatialSnapshot(spatialMemoryKey) : undefined
+        if (targetSnapshot) {
+          // A workspace already exists for the view/layout being entered:
+          // never re-randomize it. Set the layout identity first (so the
+          // restore's incremental-settle check reflects the TARGET layout,
+          // not the one being left), then restore verbatim.
+          if (layoutChanged && layoutId) handle.setLayoutIdentity(layoutId)
+          handle.restoreSpatialSnapshot(targetSnapshot)
+        } else if (layoutChanged && layoutId) {
+          // No saved workspace for the target layout (or spatial memory is
+          // opted out entirely): exactly one intentional fresh layout.
+          handle.setLayout(layoutId)
+        }
       }
+      activeLayoutIdRef.current = layoutId
+      activeSpatialKeyRef.current = spatialMemoryKey
     }
-    activeSpatialKeyRef.current = spatialMemoryKey
-  }, [spatialMemoryKey])
+  }, [layoutId, spatialMemoryKey])
 
   useImperativeHandle(
     ref,

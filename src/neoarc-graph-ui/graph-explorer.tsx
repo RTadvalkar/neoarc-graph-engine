@@ -98,10 +98,7 @@ export function GraphExplorer({
       <GraphToolbar
         layouts={renderer.availableLayouts}
         activeLayoutId={activeLayoutId}
-        onLayoutChange={(id) => {
-          setLayoutId(id)
-          canvasRef.current?.runLayout()
-        }}
+        onLayoutChange={setLayoutId}
         onFit={() => canvasRef.current?.fit()}
         onZoomIn={() => canvasRef.current?.zoomBy(1.2)}
         onZoomOut={() => canvasRef.current?.zoomBy(1 / 1.2)}

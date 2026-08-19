@@ -104,6 +104,17 @@ export interface GraphRendererHandle {
   setViewModel(viewModel: GraphViewModel): void
   setTheme(theme: GraphRendererTheme): void
   setLayout(layoutId: string): void
+  /**
+   * Changes which layout this renderer considers "active" — affecting
+   * subsequent `runLayout()` calls and incremental-settle checks — WITHOUT
+   * recomputing anything or touching a single node's position. Exists so a
+   * host can switch layout identity immediately before
+   * `restoreSpatialSnapshot(...)`: the restored positions must be judged
+   * against the target layout's own incremental-settle capability, not the
+   * layout being left. Calling `setLayout` instead here would defeat the
+   * restore by triggering a full randomize first.
+   */
+  setLayoutIdentity(layoutId: string): void
   runLayout(): void
   fit(padding?: number): void
   zoomBy(factor: number): void

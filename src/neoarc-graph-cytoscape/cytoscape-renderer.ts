@@ -447,6 +447,12 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.runLayout(true)
   }
 
+  setLayoutIdentity(layoutId: string): void {
+    // Deliberately no `runLayout` call and no position/viewport mutation —
+    // see the contract doc on `GraphRendererHandle.setLayoutIdentity`.
+    this.layoutId = layoutId
+  }
+
   /**
    * @param randomize   true for a from-scratch layout — only ever passed by an
    *                    initial mount with no restorable snapshot, an explicit
