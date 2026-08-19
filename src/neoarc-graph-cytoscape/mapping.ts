@@ -29,6 +29,8 @@ export function classesFor(flags: {
   highlighted?: boolean
   container?: boolean
   pill?: boolean
+  collapsed?: boolean
+  aggregate?: boolean
 }): string {
   const classes: string[] = []
   if (flags.container) classes.push("container")
@@ -36,7 +38,32 @@ export function classesFor(flags: {
   if (flags.selected) classes.push("selected")
   if (flags.focused) classes.push("focused")
   if (flags.highlighted) classes.push("highlight")
+  if (flags.collapsed) classes.push("collapsed")
+  if (flags.aggregate) classes.push("aggregate")
   return classes.join(" ")
+}
+
+/**
+ * Builds the three zoom-driven label variants for a leaf node, used by the
+ * type-driven semantic zoom feature (see `updateSemanticZoom` in the renderer).
+ * Compound container labels are never swapped — they stay legible at every
+ * zoom level so the group/service identity is what survives at low zoom.
+ *   - rich    (high zoom):    icon + label + a supplied property, if any
+ *   - default (medium zoom):  icon + label
+ *   - compact (low zoom):     icon only — a compact identity
+ * Very-low zoom hides the label entirely via a stylesheet class instead of a
+ * data field, so no variant is needed for that bucket.
+ */
+function firstPropertyEntry(
+  properties: Record<string, unknown> | undefined,
+): string | undefined {
+  if (!properties) return undefined
+  for (const [key, value] of Object.entries(properties)) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return `${key}: ${value}`
+    }
+  }
+  return undefined
 }
 
 export function mapViewModelToElements(
@@ -56,11 +83,17 @@ export function mapViewModelToElements(
     const border = isContainer
       ? theme.containerBorder
       : toneColor(theme, def.tone, theme.nodeBorder)
+    const label = node.label ?? def.label ?? node.id
+    const extra = firstPropertyEntry(node.properties)
     elements.push({
       group: "nodes",
       data: {
         id: node.id,
-        label: node.label ?? def.label ?? node.id,
+        label,
+        // Zoom-driven variants (leaf nodes only; containers always show `label`).
+        labelDefault: `${icon.glyph}  ${label}`,
+        labelRich: extra ? `${icon.glyph}  ${label}\n${extra}` : `${icon.glyph}  ${label}`,
+        labelCompact: icon.glyph,
         parent: node.containerId,
         shape: isContainer ? undefined : mapNodeShapeToCytoscape(def.shape),
         glyph: icon.glyph,
@@ -73,6 +106,7 @@ export function mapViewModelToElements(
         focused: node.focused,
         highlighted: node.searchHighlighted,
         container: isContainer,
+        collapsed: node.collapsed === true,
         // "pill" is a Cytoscape-only presentation refinement (tighter corner
         // radius) layered on top of the mapped `round-rectangle` shape. It is
         // derived from the semantic shape, never stored on the node record.
@@ -82,8 +116,9 @@ export function mapViewModelToElements(
   }
 
   for (const edge of viewModel.edges) {
+    const isAggregate = (edge.aggregatedEdgeIds?.length ?? 0) > 0
     const def = edgeTypeRegistry.get(edge.type)
-    const line = toneColor(theme, def.tone, theme.edgeLine)
+    const line = isAggregate ? theme.highlight : toneColor(theme, def.tone, theme.edgeLine)
     elements.push({
       group: "edges",
       data: {
@@ -93,11 +128,12 @@ export function mapViewModelToElements(
         label: edge.label ?? def.label ?? edge.type,
         line,
         arrow: def.targetArrow ?? "triangle",
-        lineStyle: def.lineStyle ?? "solid",
+        lineStyle: isAggregate ? "dashed" : def.lineStyle ?? "solid",
       },
       classes: classesFor({
         selected: edge.selected,
         highlighted: edge.searchHighlighted,
+        aggregate: isAggregate,
       }),
     })
   }

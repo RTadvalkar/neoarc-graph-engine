@@ -1,4 +1,5 @@
 import type { GraphId, GraphProperties } from "./graph-model"
+import type { GraphTraversalDirection } from "./graph-query"
 
 /**
  * Derived view concerns. These NEVER mutate canonical GraphModel facts.
@@ -19,14 +20,32 @@ export interface GraphViewport {
 export interface GraphFilterState {
   readonly nodeTypes?: readonly string[]
   readonly edgeTypes?: readonly string[]
+  /** Open string vocabulary read from `GraphNode.properties.status`. */
+  readonly statuses?: readonly string[]
+  /** Open string vocabulary read from `GraphNode.properties.facets`. */
+  readonly facets?: readonly string[]
   /** Local text query used for search highlighting over loaded data. */
   readonly query?: string
+}
+
+/**
+ * Restricts the visible graph to a local, loaded-graph-only neighborhood
+ * around a root node ("open branch as focus"). This is purely a derived view
+ * transform — it never fetches and never claims global completeness; nodes
+ * outside the neighborhood remain in `GraphModel`, just hidden from the view.
+ */
+export interface GraphExplorationFocus {
+  readonly nodeId: GraphId
+  readonly maxHops: number
+  readonly direction: GraphTraversalDirection
 }
 
 export interface GraphViewState {
   readonly selectedNodeIds: readonly GraphId[]
   readonly selectedEdgeIds: readonly GraphId[]
   readonly focusedNodeId?: GraphId
+  /** Local "open branch as focus" neighborhood restriction; see above. */
+  readonly explorationFocus?: GraphExplorationFocus
   /** Nodes hidden purely by view behavior (never removed from the model). */
   readonly hiddenNodeIds?: readonly GraphId[]
   /** Containers rendered collapsed; children are folded in the view only. */
@@ -46,6 +65,8 @@ export interface GraphViewNode {
   readonly properties?: GraphProperties
   /** True when this node visually contains other nodes (compound). */
   readonly isContainer?: boolean
+  /** True when a container's children are currently folded in the view. */
+  readonly collapsed?: boolean
   readonly selected: boolean
   readonly focused: boolean
   readonly pinned: boolean

@@ -31,6 +31,7 @@ export type {
   GraphLayoutId,
   GraphViewport,
   GraphFilterState,
+  GraphExplorationFocus,
   GraphViewState,
   GraphViewNode,
   GraphViewEdge,

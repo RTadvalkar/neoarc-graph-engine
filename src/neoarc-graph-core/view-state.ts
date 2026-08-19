@@ -1,4 +1,8 @@
-import type { GraphId, GraphViewState } from "@neoarc/graph-contracts"
+import type {
+  GraphExplorationFocus,
+  GraphId,
+  GraphViewState,
+} from "@neoarc/graph-contracts"
 
 /**
  * Pure helpers for evolving GraphViewState immutably. The UI layer owns *where*
@@ -72,4 +76,19 @@ export function setFilters(
   filters: GraphViewState["filters"],
 ): GraphViewState {
   return { ...state, filters }
+}
+
+/** "Open branch as focus": restrict the view to a local loaded-graph neighborhood. */
+export function setExplorationFocus(
+  state: GraphViewState,
+  focus: GraphExplorationFocus,
+): GraphViewState {
+  return { ...state, explorationFocus: focus }
+}
+
+/** "Reset focus": clear the exploration-focus restriction. */
+export function clearExplorationFocus(state: GraphViewState): GraphViewState {
+  if (!state.explorationFocus) return state
+  const { explorationFocus: _drop, ...rest } = state
+  return rest
 }

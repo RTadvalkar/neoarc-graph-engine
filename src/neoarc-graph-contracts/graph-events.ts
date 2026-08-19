@@ -1,5 +1,10 @@
 import type { GraphId } from "./graph-model"
-import type { GraphFilterState, GraphLayoutId, GraphViewport } from "./graph-view"
+import type {
+  GraphExplorationFocus,
+  GraphFilterState,
+  GraphLayoutId,
+  GraphViewport,
+} from "./graph-view"
 import type { GraphQueryRequest } from "./graph-query"
 
 /**
@@ -19,6 +24,10 @@ export type GraphSemanticEvent =
   | { readonly type: "graph.collapse"; readonly containerId: GraphId }
   | { readonly type: "graph.expand"; readonly containerId: GraphId }
   | { readonly type: "graph.focus.change"; readonly nodeId?: GraphId }
+  /** "Open branch as focus": restrict the view to a local loaded-graph neighborhood. */
+  | { readonly type: "graph.focus.explore"; readonly focus: GraphExplorationFocus }
+  /** "Reset focus": clear the exploration-focus restriction. */
+  | { readonly type: "graph.focus.reset" }
   | { readonly type: "graph.filters.change"; readonly filters: GraphFilterState }
   | { readonly type: "graph.layout.change"; readonly layoutId: GraphLayoutId }
   | { readonly type: "graph.viewport.change"; readonly viewport: GraphViewport }

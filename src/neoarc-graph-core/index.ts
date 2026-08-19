@@ -30,6 +30,9 @@ export type {
 
 export { buildViewModel } from "./view-model"
 
+export { localNeighborhood } from "./traversal"
+export type { LocalNeighborhoodOptions } from "./traversal"
+
 export {
   createInitialViewState,
   selectNode,
@@ -38,4 +41,6 @@ export {
   setLayout,
   toggleContainerCollapsed,
   setFilters,
+  setExplorationFocus,
+  clearExplorationFocus,
 } from "./view-state"
