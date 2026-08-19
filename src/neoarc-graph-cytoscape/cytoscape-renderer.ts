@@ -83,6 +83,8 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   private nodeIds: Set<string>
   private resizeObserver?: ResizeObserver
   private hadRealSize = false
+  /** Set in destroy() so a deferred repaint scheduled before teardown becomes a no-op. */
+  private destroyed = false
   private spatialListeners = new Set<() => void>()
   /**
    * Every GraphId this instance has ever positioned, including ids currently
@@ -128,23 +130,27 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.topologyKey = JSON.stringify(idSet(options.viewModel))
     this.nodeIds = new Set(options.viewModel.nodes.map((n) => n.id))
 
+    // Only pin the init layout to "preset" when we actually seeded positions
+    // (a restore). "preset" is a no-op layout that keeps each element exactly
+    // at its `position` field, so a restore is not clobbered by Cytoscape's
+    // implicit init layout. On a from-scratch mount there are no positions to
+    // preserve: forcing "preset" would stack every node at the origin, and
+    // fCoSE started from that fully-degenerate (all-overlapping) state settles
+    // node positions but leaves edges in a broken rscratch state that never
+    // paints. Letting the default init layout (grid) spread the nodes first
+    // gives fCoSE a non-degenerate starting point and edges render correctly.
+    const seededPositions = elements.some(
+      (el) => (el as { position?: { x: number; y: number } }).position,
+    )
+
     this.cy = cytoscape({
       container: options.container,
       elements,
       style: buildStylesheet(this.theme),
       minZoom: 0.05,
       maxZoom: 3,
-      // Cytoscape runs an implicit init layout (defaulting to "grid") when
-      // no `layout` is specified, which silently overwrites any explicit
-      // per-element `position` — including every restored/seeded position
-      // set above. "preset" is a no-op layout that leaves elements exactly
-      // where their `position` field puts them, so mount is the sole
-      // authority over initial placement and the explicit `runLayout(...)`
-      // call below runs against real (not grid-clobbered) positions.
-      layout: { name: "preset" },
+      ...(seededPositions ? { layout: { name: "preset" } } : {}),
     })
-
-    ;(globalThis as any).__debugCy = this.cy
 
     this.wireEvents()
 
@@ -168,6 +174,9 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       } else {
         this.updateSemanticZoom()
         this.notifySpatialChange()
+        // No layout runs on this path, so force the initial edge paint
+        // directly (see repaintEdges for the underlying Cytoscape quirk).
+        this.repaintEdges()
       }
       if (options.restoreViewport) this.setViewport(options.restoreViewport)
     } else {
@@ -483,8 +492,40 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       if (randomize) this.fit()
       this.updateSemanticZoom()
       this.notifySpatialChange()
+      this.repaintEdges()
     })
     layout.run()
+  }
+
+  /**
+   * Workaround for a Cytoscape canvas-renderer quirk: on a freshly created
+   * instance, a layout run with `animate: false` settles node positions and
+   * computes edge geometry, but the edges are never added to the renderer's
+   * draw set, so they compute-but-never-paint until the next real position
+   * change. Neither `forceRender`, `resize`, nor a style update recovers them
+   * — only an actual node-position mutation invalidates the connected-edge
+   * render state. This nudges every node by a sub-pixel delta and immediately
+   * back within a single batch: the net displacement is exactly zero (node
+   * positions, spatial snapshots, and fixed-constraint results are unchanged)
+   * but the position events force the edges to paint. Confined to the
+   * Cytoscape adapter so no renderer-specific quirk leaks into graph-core.
+   */
+  private repaintEdges(): void {
+    // Must run on a fresh tick, outside any batch Cytoscape is still holding
+    // open around the layout callback that triggers this — a net-zero nudge
+    // coalesced inside that batch cancels to nothing and never repaints.
+    const run = () => {
+      if (this.destroyed || this.cy.edges().empty()) return
+      this.cy.batch(() => {
+        this.cy.nodes().forEach((node) => {
+          const { x, y } = node.position()
+          node.position({ x: x + 0.5, y })
+          node.position({ x, y })
+        })
+      })
+    }
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(run)
+    else setTimeout(run, 0)
   }
 
   fit(padding = 40): void {
@@ -573,6 +614,7 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   }
 
   destroy(): void {
+    this.destroyed = true
     this.resizeObserver?.disconnect()
     this.spatialListeners.clear()
     this.cy.destroy()
