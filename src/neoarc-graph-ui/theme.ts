@@ -21,6 +21,13 @@ const TONE_TOKENS = [
   "finding",
   "external",
   "unknown",
+  // Generic semantic tones (renderer-/domain-neutral) that overlays may
+  // reference via their supplied `tone`. Not impact-specific.
+  "brand",
+  "info",
+  "success",
+  "warning",
+  "danger",
 ] as const
 
 /**

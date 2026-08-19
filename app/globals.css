@@ -102,6 +102,17 @@
   --graph-selected: oklch(0.72 0.16 255);
   --graph-focused: oklch(0.82 0.16 90);
   --graph-highlight: oklch(0.75 0.18 330);
+  /*
+   * Generic semantic tones. Renderer-neutral and domain-neutral: overlays
+   * (impact/search/risk/…) reference these by name via their supplied `tone`.
+   * No impact vocabulary lives here — these are ordinary status colors any
+   * overlay kind may reuse.
+   */
+  --graph-brand: oklch(0.62 0.19 265);
+  --graph-info: oklch(0.66 0.13 230);
+  --graph-success: oklch(0.65 0.16 150);
+  --graph-warning: oklch(0.75 0.16 75);
+  --graph-danger: oklch(0.6 0.22 25);
 }
 
 .dark {

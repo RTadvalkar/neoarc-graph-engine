@@ -36,6 +36,9 @@ export interface GraphToolbarProps {
   readonly onToggleFullscreen: () => void
   readonly onToggleFilters: () => void
   readonly filtersActive: boolean
+  /** Optional overlay-panel toggle. Rendered only when a handler is supplied. */
+  readonly onToggleOverlays?: () => void
+  readonly overlaysActive?: boolean
 }
 
 const DIRECTIONS: readonly GraphTraversalDirection[] = ["both", "outgoing", "incoming"]
@@ -67,6 +70,8 @@ export function GraphToolbar({
   onToggleFullscreen,
   onToggleFilters,
   filtersActive,
+  onToggleOverlays,
+  overlaysActive,
 }: GraphToolbarProps) {
   const [maxHops, setMaxHops] = useState<number>(1)
   const [hopPreset, setHopPreset] = useState<string>("1")
@@ -210,6 +215,17 @@ export function GraphToolbar({
       >
         Filters
       </button>
+
+      {onToggleOverlays ? (
+        <button
+          type="button"
+          className={`${btnClass} ${overlaysActive ? "border-ring bg-muted" : ""}`}
+          aria-pressed={overlaysActive ?? false}
+          onClick={onToggleOverlays}
+        >
+          Overlays
+        </button>
+      ) : null}
 
       <div className="ml-auto flex items-center gap-1.5">
         <input
