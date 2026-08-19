@@ -18,6 +18,8 @@ export interface GraphInspectorProps {
    */
   readonly renderNodeExtras?: (node: GraphViewNode) => React.ReactNode
   readonly renderEdgeExtras?: (edge: GraphViewEdge) => React.ReactNode
+  /** Only relevant for a selected compound container node. */
+  readonly onToggleCollapse?: (containerId: string) => void
 }
 
 function PropertyRows({
@@ -54,6 +56,7 @@ export function GraphInspector({
   registries,
   renderNodeExtras,
   renderEdgeExtras,
+  onToggleCollapse,
 }: GraphInspectorProps) {
   const selectedNode = useMemo(
     () => viewModel.nodes.find((n) => n.selected),
@@ -78,6 +81,15 @@ export function GraphInspector({
           </h2>
           <span className="font-mono text-xs text-muted-foreground">{selectedNode.id}</span>
         </header>
+        {selectedNode.isContainer ? (
+          <button
+            type="button"
+            className="inline-flex h-8 w-fit items-center justify-center rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            onClick={() => onToggleCollapse?.(selectedNode.id)}
+          >
+            {selectedNode.collapsed ? "Expand group" : "Collapse group"}
+          </button>
+        ) : null}
         <section className="flex flex-col gap-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Properties

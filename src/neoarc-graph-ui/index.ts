@@ -20,6 +20,15 @@ export type { GraphInspectorProps } from "./graph-inspector"
 export { GraphNodeList } from "./graph-node-list"
 export type { GraphNodeListProps } from "./graph-node-list"
 
+export { GraphFiltersPanel } from "./graph-filters-panel"
+export type { GraphFiltersPanelProps } from "./graph-filters-panel"
+
+export { GraphLegend } from "./graph-legend"
+export type { GraphLegendProps } from "./graph-legend"
+
+export { GraphMinimap } from "./graph-minimap"
+export type { GraphMinimapProps } from "./graph-minimap"
+
 export { useGraphExplorer } from "./use-graph-explorer"
 export type {
   UseGraphExplorerOptions,

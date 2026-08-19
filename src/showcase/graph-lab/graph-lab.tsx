@@ -5,7 +5,8 @@ import type { GraphModel, GraphSemanticEvent } from "@neoarc/graph-contracts"
 import { GraphExplorer } from "@neoarc/graph-ui"
 import { cytoscapeRenderer } from "@neoarc/graph-cytoscape"
 import { showcaseRegistries } from "./registries"
-import { SYSTEM_GRAPH, expandFromBackend } from "./system-graph"
+import { expandFromBackend } from "./system-graph"
+import { GRAPH_LAB_SCENARIOS } from "./scenarios"
 
 /**
  * SHOWCASE controller. It owns the authoritative GraphModel and fulfills the
@@ -14,10 +15,19 @@ import { SYSTEM_GRAPH, expandFromBackend } from "./system-graph"
  * explicit response to a typed intent handled here.
  */
 export function GraphLab() {
-  const [model, setModel] = useState<GraphModel>(SYSTEM_GRAPH)
+  const [scenarioId, setScenarioId] = useState(GRAPH_LAB_SCENARIOS[0].id)
+  const scenario = GRAPH_LAB_SCENARIOS.find((s) => s.id === scenarioId) ?? GRAPH_LAB_SCENARIOS[0]
+  const [model, setModel] = useState<GraphModel>(scenario.model)
   const [status, setStatus] = useState<string>(
-    `Loaded ${SYSTEM_GRAPH.nodes.length} nodes, ${SYSTEM_GRAPH.edges.length} relationships.`,
+    `Loaded ${scenario.model.nodes.length} nodes, ${scenario.model.edges.length} relationships.`,
   )
+
+  const handleScenarioChange = useCallback((id: string) => {
+    const next = GRAPH_LAB_SCENARIOS.find((s) => s.id === id) ?? GRAPH_LAB_SCENARIOS[0]
+    setScenarioId(id)
+    setModel(next.model)
+    setStatus(`Loaded ${next.model.nodes.length} nodes, ${next.model.edges.length} relationships.`)
+  }, [])
 
   const handleIntent = useCallback((event: GraphSemanticEvent) => {
     if (event.type !== "graph.expand.request") {

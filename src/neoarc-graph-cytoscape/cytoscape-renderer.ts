@@ -1,7 +1,14 @@
 import cytoscape from "cytoscape"
 import type { Core, EventObject } from "cytoscape"
-import type { GraphSemanticEvent, GraphViewModel, GraphViewport } from "@neoarc/graph-contracts"
+import fcose from "cytoscape-fcose"
 import type {
+  GraphSemanticEvent,
+  GraphViewModel,
+  GraphViewport,
+} from "@neoarc/graph-contracts"
+import type {
+  GraphBoundingBox,
+  GraphNodePosition,
   GraphRenderer,
   GraphRendererHandle,
   GraphRendererMountOptions,
@@ -10,12 +17,25 @@ import type {
 import { mapViewModelToElements } from "./mapping"
 import { buildStylesheet } from "./stylesheet"
 import { CYTOSCAPE_LAYOUTS, DEFAULT_LAYOUT_ID, buildLayoutOptions } from "./layouts"
+import type { FixedNodePosition } from "./layouts"
 
 /**
  * Cytoscape.js renderer — the first concrete implementation of the renderer
  * boundary. Every Cytoscape import/type/instance lives inside this package.
  * The Graph UI depends only on `GraphRenderer`/`GraphRendererHandle`.
  */
+
+let fcoseRegistered = false
+function ensureFcoseRegistered() {
+  if (fcoseRegistered) return
+  cytoscape.use(fcose)
+  fcoseRegistered = true
+}
+
+/** Zoom thresholds for the type-driven semantic zoom classes. */
+const ZOOM_RICH_AT = 1.4
+const ZOOM_COMPACT_BELOW = 0.5
+const ZOOM_HIDDEN_BELOW = 0.22
 
 function idSet(viewModel: GraphViewModel): { nodes: string; edges: string } {
   return {
@@ -37,10 +57,13 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   private theme: GraphRendererTheme
   private layoutId: string
   private topologyKey: string
+  private nodeIds: Set<string>
   private resizeObserver?: ResizeObserver
   private hadRealSize = false
+  private spatialListeners = new Set<() => void>()
 
   constructor(options: GraphRendererMountOptions) {
+    ensureFcoseRegistered()
     this.options = options
     this.theme = options.theme
     this.layoutId = options.layoutId ?? DEFAULT_LAYOUT_ID
@@ -52,19 +75,19 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       theme: this.theme,
     })
     this.topologyKey = JSON.stringify(idSet(options.viewModel))
+    this.nodeIds = new Set(options.viewModel.nodes.map((n) => n.id))
 
     this.cy = cytoscape({
       container: options.container,
       elements,
       style: buildStylesheet(this.theme),
-      wheelSensitivity: 0.2,
       minZoom: 0.05,
       maxZoom: 3,
     })
 
     this.wireEvents()
     this.observeResize()
-    this.runLayout()
+    this.runLayout(true)
   }
 
   /**
@@ -110,6 +133,32 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.cy.on("tap", (evt) => {
       if (evt.target === this.cy) this.emit({ type: "graph.background.tap" })
     })
+    this.cy.on("zoom", () => this.updateSemanticZoom())
+    this.cy.on("zoom pan position drag free", () => this.notifySpatialChange())
+  }
+
+  /**
+   * Type-driven semantic zoom for leaf nodes: swaps a label-detail class as
+   * the camera zoom crosses thresholds, from a rich icon+label+property view
+   * down to icon-only and finally an unlabeled dot. Compound containers never
+   * receive these classes — their identity stays legible at every zoom level
+   * so structural/group context survives even when zoomed far out.
+   */
+  private updateSemanticZoom(): void {
+    const zoom = this.cy.zoom()
+    const leaves = this.cy.nodes().not(".container")
+    leaves.removeClass("zoom-rich zoom-compact zoom-hidden")
+    if (zoom >= ZOOM_RICH_AT) {
+      leaves.addClass("zoom-rich")
+    } else if (zoom < ZOOM_HIDDEN_BELOW) {
+      leaves.addClass("zoom-hidden")
+    } else if (zoom < ZOOM_COMPACT_BELOW) {
+      leaves.addClass("zoom-compact")
+    }
+  }
+
+  private notifySpatialChange(): void {
+    for (const listener of this.spatialListeners) listener()
   }
 
   private mapping() {
@@ -137,16 +186,57 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
           }
         }
       })
+      this.updateSemanticZoom()
       return
     }
 
-    // Topology changed: rebuild and re-run layout.
+    // Topology changed (expand/collapse/filter/N-hop). Rather than a full
+    // rebuild, remove only what left and add only what's new, then re-run
+    // fCoSE with every still-present node pinned via `fixedNodeConstraint` —
+    // this is the mental-map-preservation mechanism: only genuinely new
+    // nodes move, everything the user was already looking at stays put.
     this.topologyKey = nextKey
+    const nextNodeIds = new Set(viewModel.nodes.map((n) => n.id))
+    const nextElementIds = new Set([
+      ...viewModel.nodes.map((n) => n.id),
+      ...viewModel.edges.map((e) => e.id),
+    ])
+
+    const fixedNodeConstraint: FixedNodePosition[] = []
+    for (const id of this.nodeIds) {
+      if (!nextNodeIds.has(id)) continue
+      const el = this.cy.getElementById(id)
+      if (el.nonempty()) {
+        const pos = el.position()
+        fixedNodeConstraint.push({ nodeId: id, position: { x: pos.x, y: pos.y } })
+      }
+    }
+    const isPureGrowth = fixedNodeConstraint.length === this.nodeIds.size
+
     this.cy.batch(() => {
-      this.cy.elements().remove()
-      this.cy.add(elements)
+      this.cy.elements().forEach((el) => {
+        if (!nextElementIds.has(el.id())) el.remove()
+      })
+      const toAdd = elements.filter((el) => {
+        const id = String(el.data.id)
+        return this.cy.getElementById(id).empty()
+      })
+      this.cy.add(toAdd)
+      for (const el of elements) {
+        const existing = this.cy.getElementById(String(el.data.id))
+        if (existing.nonempty()) {
+          existing.data(el.data)
+          existing.classes(el.classes ?? "")
+        }
+      }
     })
-    this.runLayout()
+    this.nodeIds = nextNodeIds
+
+    // Pure growth (nothing removed) keeps the whole existing layout pinned so
+    // new nodes settle in around it. Any removal (collapse/filter shrinking
+    // the view) re-lays-out from scratch since the freed space should be
+    // reclaimed rather than left as a hole.
+    this.runLayout(!isPureGrowth, isPureGrowth ? fixedNodeConstraint : undefined)
   }
 
   setTheme(theme: GraphRendererTheme): void {
@@ -163,12 +253,26 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
 
   setLayout(layoutId: string): void {
     this.layoutId = layoutId
-    this.runLayout()
+    this.runLayout(true)
   }
 
-  runLayout(): void {
-    const layout = this.cy.layout(buildLayoutOptions(this.layoutId))
-    layout.one("layoutstop", () => this.fit())
+  /**
+   * @param randomize   true for a from-scratch layout (initial mount, layout
+   *                    switch, or any change that shrank the view); false to
+   *                    incrementally settle new nodes around fixed neighbors.
+   * @param fixedNodeConstraint  positions of nodes that must not move; the
+   *                    mental-map-preservation mechanism for growth-only
+   *                    topology changes (expand neighbors, load more, etc).
+   */
+  runLayout(randomize = true, fixedNodeConstraint?: readonly FixedNodePosition[]): void {
+    const layout = this.cy.layout(
+      buildLayoutOptions(this.layoutId, { randomize, fixedNodeConstraint }),
+    )
+    layout.one("layoutstop", () => {
+      if (randomize) this.fit()
+      this.updateSemanticZoom()
+      this.notifySpatialChange()
+    })
     layout.run()
   }
 
@@ -198,8 +302,28 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     if (viewport.pan) this.cy.pan({ x: viewport.pan.x, y: viewport.pan.y })
   }
 
+  getNodePositions(): ReadonlyMap<string, GraphNodePosition> {
+    const positions = new Map<string, GraphNodePosition>()
+    this.cy.nodes().forEach((node) => {
+      const pos = node.position()
+      positions.set(node.id(), { x: pos.x, y: pos.y })
+    })
+    return positions
+  }
+
+  getBoundingBox(): GraphBoundingBox {
+    const bb = this.cy.elements().boundingBox()
+    return { x1: bb.x1, y1: bb.y1, x2: bb.x2, y2: bb.y2 }
+  }
+
+  onSpatialChange(listener: () => void): () => void {
+    this.spatialListeners.add(listener)
+    return () => this.spatialListeners.delete(listener)
+  }
+
   destroy(): void {
     this.resizeObserver?.disconnect()
+    this.spatialListeners.clear()
     this.cy.destroy()
   }
 }
