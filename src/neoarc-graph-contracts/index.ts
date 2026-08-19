@@ -39,6 +39,7 @@ export type {
   GraphViewport,
   GraphFilterState,
   GraphExplorationFocus,
+  GraphOverlayViewState,
   GraphViewState,
   GraphViewNode,
   GraphViewEdge,
@@ -48,8 +49,12 @@ export type {
 export type {
   GraphOverlayNodeState,
   GraphOverlayEdgeState,
+  GraphOverlayPath,
   GraphOverlayCompleteness,
+  GraphOverlayFreshness,
   GraphOverlay,
+  GraphAppliedOverlayNodeState,
+  GraphAppliedOverlayEdgeState,
 } from "./graph-overlay"
 
 export type { GraphViewDescriptor } from "./graph-view-descriptor"

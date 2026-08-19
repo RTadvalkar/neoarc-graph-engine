@@ -31,6 +31,18 @@ export type GraphSemanticEvent =
   | { readonly type: "graph.filters.change"; readonly filters: GraphFilterState }
   | { readonly type: "graph.layout.change"; readonly layoutId: GraphLayoutId }
   | { readonly type: "graph.viewport.change"; readonly viewport: GraphViewport }
+  /**
+   * Requests a supplied impact result from the host (authoritative). Forwarded
+   * like expand/search/path — never fulfilled locally, no hidden fetch.
+   */
+  | { readonly type: "graph.impact.request"; readonly request: GraphQueryRequest }
+  /* View-only overlay intents — fulfilled locally against GraphViewState.overlay. */
+  | { readonly type: "graph.overlay.setActive"; readonly overlayIds?: readonly string[] }
+  | { readonly type: "graph.overlay.show"; readonly show: boolean }
+  | { readonly type: "graph.overlay.showPaths"; readonly show: boolean }
+  | { readonly type: "graph.overlay.restrictToOverlayFocus"; readonly restrict: boolean }
+  | { readonly type: "graph.overlay.selectPath"; readonly pathId?: string }
+  | { readonly type: "graph.overlay.clear" }
 
 export type GraphSemanticEventType = GraphSemanticEvent["type"]
 

@@ -30,6 +30,9 @@ export type {
 
 export { buildViewModel } from "./view-model"
 
+export { applyOverlays, resolveOverlayFreshness } from "./overlay"
+export type { ApplyOverlaysResult } from "./overlay"
+
 export { localNeighborhood } from "./traversal"
 export type { LocalNeighborhoodOptions } from "./traversal"
 
@@ -48,4 +51,10 @@ export {
   setFilters,
   setExplorationFocus,
   clearExplorationFocus,
+  setActiveOverlays,
+  setOverlayShow,
+  setOverlayShowPaths,
+  setOverlayRestrictToFocus,
+  setActiveOverlayPath,
+  clearOverlayState,
 } from "./view-state"

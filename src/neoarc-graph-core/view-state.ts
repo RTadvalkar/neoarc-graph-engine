@@ -1,6 +1,7 @@
 import type {
   GraphExplorationFocus,
   GraphId,
+  GraphOverlayViewState,
   GraphViewState,
 } from "@neoarc/graph-contracts"
 
@@ -91,4 +92,67 @@ export function clearExplorationFocus(state: GraphViewState): GraphViewState {
   if (!state.explorationFocus) return state
   const { explorationFocus: _drop, ...rest } = state
   return rest
+}
+
+/* -------------------------------------------------------------------------- */
+/* Overlay view-state reducers (all view-only; never touch GraphModel facts). */
+/* -------------------------------------------------------------------------- */
+
+function withOverlay(
+  state: GraphViewState,
+  patch: Partial<GraphOverlayViewState>,
+): GraphViewState {
+  return { ...state, overlay: { ...state.overlay, ...patch } }
+}
+
+/**
+ * Set the active overlay id set. Pass `undefined` for "all supplied overlays
+ * active" (default), or `[]` for "explicitly none active".
+ */
+export function setActiveOverlays(
+  state: GraphViewState,
+  overlayIds: readonly string[] | undefined,
+): GraphViewState {
+  return withOverlay(state, { activeOverlayIds: overlayIds })
+}
+
+export function setOverlayShow(state: GraphViewState, show: boolean): GraphViewState {
+  return withOverlay(state, { showOverlay: show })
+}
+
+export function setOverlayShowPaths(state: GraphViewState, show: boolean): GraphViewState {
+  return withOverlay(state, { showPaths: show })
+}
+
+export function setOverlayRestrictToFocus(
+  state: GraphViewState,
+  restrict: boolean,
+): GraphViewState {
+  return withOverlay(state, { restrictToOverlayFocus: restrict })
+}
+
+export function setActiveOverlayPath(
+  state: GraphViewState,
+  pathId: string | undefined,
+): GraphViewState {
+  return withOverlay(state, { activePathId: pathId })
+}
+
+/**
+ * Clear all overlay presentation. LOCKED: sets `activeOverlayIds` to `[]`
+ * (explicitly none) rather than `undefined`, so clearing never silently
+ * reactivates the default-all behavior. Also drops path selection and turns
+ * off state/path presentation and focus restriction.
+ */
+export function clearOverlayState(state: GraphViewState): GraphViewState {
+  return {
+    ...state,
+    overlay: {
+      activeOverlayIds: [],
+      showOverlay: false,
+      showPaths: false,
+      restrictToOverlayFocus: false,
+      activePathId: undefined,
+    },
+  }
 }

@@ -1,5 +1,9 @@
 import type { ElementDefinition } from "cytoscape"
-import type { GraphViewModel } from "@neoarc/graph-contracts"
+import type {
+  GraphAppliedOverlayEdgeState,
+  GraphAppliedOverlayNodeState,
+  GraphViewModel,
+} from "@neoarc/graph-contracts"
 import type { EdgeTypeRegistry, IconRegistry, NodeTypeRegistry } from "@neoarc/graph-core"
 import type { GraphRendererTheme } from "@neoarc/graph-renderer"
 import { mapNodeShapeToCytoscape } from "./shape-mapping"
@@ -23,6 +27,29 @@ function toneColor(theme: GraphRendererTheme, tone: string | undefined, fallback
   return theme.tones[tone] ?? fallback
 }
 
+/**
+ * Resolve a concrete overlay color for a decorated node/edge. Cytoscape has NO
+ * knowledge of impact/state vocabulary — it consumes only the supplied `tone`.
+ * When several supplied states project onto one visible (aggregate) element,
+ * the FIRST applicable supplied tone wins as a deterministic render tie-break;
+ * all states remain retained on the view model (no precedence is inferred).
+ * When no supplied state carries a resolvable tone, a single generic highlight
+ * fallback is used — never a per-state color table.
+ */
+function overlayColor(
+  theme: GraphRendererTheme,
+  overlays:
+    | readonly GraphAppliedOverlayNodeState[]
+    | readonly GraphAppliedOverlayEdgeState[]
+    | undefined,
+): string | undefined {
+  if (!overlays || overlays.length === 0) return undefined
+  for (const entry of overlays) {
+    if (entry.tone && theme.tones[entry.tone]) return theme.tones[entry.tone]
+  }
+  return theme.highlight
+}
+
 export function classesFor(flags: {
   selected?: boolean
   focused?: boolean
@@ -31,6 +58,8 @@ export function classesFor(flags: {
   pill?: boolean
   collapsed?: boolean
   aggregate?: boolean
+  hasOverlay?: boolean
+  onPath?: boolean
 }): string {
   const classes: string[] = []
   if (flags.container) classes.push("container")
@@ -40,6 +69,8 @@ export function classesFor(flags: {
   if (flags.highlighted) classes.push("highlight")
   if (flags.collapsed) classes.push("collapsed")
   if (flags.aggregate) classes.push("aggregate")
+  if (flags.hasOverlay) classes.push("has-overlay")
+  if (flags.onPath) classes.push("on-path")
   return classes.join(" ")
 }
 
@@ -85,6 +116,8 @@ export function mapViewModelToElements(
       : toneColor(theme, def.tone, theme.nodeBorder)
     const label = node.label ?? def.label ?? node.id
     const extra = firstPropertyEntry(node.properties)
+    const nodeOverlayColor = overlayColor(theme, node.overlays)
+    const nodeOnPath = (node.onSupportingPathIds?.length ?? 0) > 0
     elements.push({
       group: "nodes",
       data: {
@@ -100,6 +133,8 @@ export function mapViewModelToElements(
         bg,
         border,
         text: isContainer ? theme.containerText : theme.nodeText,
+        // Supplied overlay accent; absent when this node carries no overlay.
+        overlayColor: nodeOverlayColor ?? theme.highlight,
       },
       classes: classesFor({
         selected: node.selected,
@@ -111,6 +146,8 @@ export function mapViewModelToElements(
         // radius) layered on top of the mapped `round-rectangle` shape. It is
         // derived from the semantic shape, never stored on the node record.
         pill: !isContainer && def.shape === "pill",
+        hasOverlay: nodeOverlayColor !== undefined,
+        onPath: nodeOnPath,
       }),
     })
   }
@@ -119,6 +156,8 @@ export function mapViewModelToElements(
     const isAggregate = (edge.aggregatedEdgeIds?.length ?? 0) > 0
     const def = edgeTypeRegistry.get(edge.type)
     const line = isAggregate ? theme.highlight : toneColor(theme, def.tone, theme.edgeLine)
+    const edgeOverlayColor = overlayColor(theme, edge.overlays)
+    const edgeOnPath = (edge.onSupportingPathIds?.length ?? 0) > 0
     elements.push({
       group: "edges",
       data: {
@@ -129,11 +168,15 @@ export function mapViewModelToElements(
         line,
         arrow: def.targetArrow ?? "triangle",
         lineStyle: isAggregate ? "dashed" : def.lineStyle ?? "solid",
+        // Supplied overlay accent; absent when this edge carries no overlay.
+        overlayColor: edgeOverlayColor ?? theme.highlight,
       },
       classes: classesFor({
         selected: edge.selected,
         highlighted: edge.searchHighlighted,
         aggregate: isAggregate,
+        hasOverlay: edgeOverlayColor !== undefined,
+        onPath: edgeOnPath,
       }),
     })
   }

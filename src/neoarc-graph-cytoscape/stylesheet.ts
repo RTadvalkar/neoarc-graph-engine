@@ -84,6 +84,27 @@ export function buildStylesheet(theme: GraphRendererTheme): StylesheetJson {
       },
     },
     {
+      // Supplied overlay accent on a node. Color comes entirely from the
+      // supplied tone (via `data(overlayColor)`); this package encodes no
+      // impact/state vocabulary. Placed before selected/focused so explicit
+      // user selection still visually wins.
+      selector: "node.has-overlay",
+      style: {
+        "border-color": "data(overlayColor)",
+        "border-width": 4,
+        "background-blacken": -0.1,
+      },
+    },
+    {
+      // Node participates in a supplied supporting path.
+      selector: "node.on-path",
+      style: {
+        "border-color": "data(overlayColor)",
+        "border-width": 4,
+        "border-style": "double",
+      },
+    },
+    {
       selector: "node.selected",
       style: {
         "border-color": theme.selected,
@@ -120,6 +141,25 @@ export function buildStylesheet(theme: GraphRendererTheme): StylesheetJson {
         "text-background-color": theme.background,
         "text-background-opacity": 1,
         "text-background-padding": "2px",
+      },
+    },
+    {
+      // Supplied overlay accent on an edge — supplied tone only, no state map.
+      selector: "edge.has-overlay",
+      style: {
+        "line-color": "data(overlayColor)",
+        "target-arrow-color": "data(overlayColor)",
+        width: 2.6,
+      },
+    },
+    {
+      // Edge on a supplied supporting path — emphasized but still tone-driven.
+      selector: "edge.on-path",
+      style: {
+        "line-color": "data(overlayColor)",
+        "target-arrow-color": "data(overlayColor)",
+        width: 3.6,
+        "line-style": "solid",
       },
     },
     {
