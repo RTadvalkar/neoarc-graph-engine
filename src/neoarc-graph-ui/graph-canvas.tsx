@@ -105,6 +105,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(funct
     })
 
     return () => {
+      console.log("[v0] GraphCanvas UNMOUNT cleanup, activeSpatialKeyRef:", activeSpatialKeyRef.current)
       observer.disconnect()
       // Save the arrangement being left so it can be restored verbatim if
       // this exact view/renderer/layout key is mounted again later.
