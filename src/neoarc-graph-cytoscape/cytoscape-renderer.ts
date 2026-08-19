@@ -98,6 +98,8 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
   private restoredAtMount = false
   /** Mutable mirror of the last view model set via the constructor/`setViewModel` (mount options are readonly). */
   private currentViewModel: GraphViewModel
+  /** Bound reference so the contextmenu listener added in wireEvents() can be removed in destroy(). */
+  private preventContextMenu = (e: Event) => e.preventDefault()
 
   constructor(options: GraphRendererMountOptions) {
     ensureFcoseRegistered()
@@ -230,6 +232,22 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.cy.on("tap", (evt) => {
       if (evt.target === this.cy) this.emit({ type: "graph.background.tap" })
     })
+    // Right-click (Cytoscape's cxttap) on a node toggles it in/out of the
+    // current multi-selection via the existing additive-selection semantics —
+    // it never clears other selected nodes. Right-click on the background is
+    // a deliberate no-op (must not clear selection). This reuses
+    // `graph.node.select`/`additive` as-is; no new event type or view state.
+    this.cy.on("cxttap", "node", (evt) => {
+      this.emit({
+        type: "graph.node.select",
+        nodeId: evt.target.id(),
+        additive: true,
+      })
+    })
+    // Prevent the browser's native context menu inside the graph canvas only,
+    // so right-click reads as an intentional selection gesture rather than
+    // triggering a browser menu. Stored so destroy() can remove it.
+    this.options.container.addEventListener("contextmenu", this.preventContextMenu)
     this.cy.on("zoom", () => this.updateSemanticZoom())
     this.cy.on("zoom pan position drag free", () => this.notifySpatialChange())
   }
@@ -625,6 +643,7 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.destroyed = true
     this.resizeObserver?.disconnect()
     this.spatialListeners.clear()
+    this.options.container.removeEventListener("contextmenu", this.preventContextMenu)
     this.cy.destroy()
   }
 }
