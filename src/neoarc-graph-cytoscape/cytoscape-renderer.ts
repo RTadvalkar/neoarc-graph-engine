@@ -105,6 +105,12 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     this.currentViewModel = options.viewModel
 
     const restoreNodePositions = options.restoreNodePositions
+    console.log(
+      "[v0] mount received restoreNodePositions:",
+      restoreNodePositions
+        ? JSON.stringify([...restoreNodePositions.entries()])
+        : restoreNodePositions,
+    )
     if (restoreNodePositions) {
       for (const [id, pos] of restoreNodePositions) this.lastKnownPositions.set(id, pos)
     }
@@ -137,6 +143,11 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
     })
 
     this.wireEvents()
+
+    console.log(
+      "[v0] mount seeded positions:",
+      this.cy.nodes().map((n) => `${n.id()}=(${Math.round(n.position().x)},${Math.round(n.position().y)})`),
+    )
 
     const restoredNodeIds = restoreNodePositions
       ? [...restoreNodePositions.keys()].filter((id) => this.nodeIds.has(id))
@@ -473,6 +484,11 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
       if (randomize) this.fit()
       this.updateSemanticZoom()
       this.notifySpatialChange()
+      console.log(
+        "[v0] layoutstop randomize:", randomize,
+        "fixed:", fixedNodeConstraint?.length,
+        "positions:", this.cy.nodes().map((n) => `${n.id()}=(${Math.round(n.position().x)},${Math.round(n.position().y)})`),
+      )
     })
     layout.run()
   }
