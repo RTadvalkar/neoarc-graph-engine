@@ -17,6 +17,13 @@ export type {
 export type { GraphPatch } from "./graph-patch"
 
 export type {
+  GraphChangeSet,
+  GraphChangeSetSource,
+  GraphChangeSetNodeRef,
+  GraphChangeSetEdgeRef,
+} from "./graph-change-set"
+
+export type {
   GraphTone,
   GraphNodeShape,
   GraphEdgeLineStyle,

@@ -33,6 +33,11 @@ export { buildViewModel } from "./view-model"
 export { localNeighborhood } from "./traversal"
 export type { LocalNeighborhoodOptions } from "./traversal"
 
+export { applyGraphPatch } from "./graph-patch"
+export type { GraphPatchApplicationStatus, GraphPatchApplicationResult } from "./graph-patch"
+
+export { deriveGraphChangeSet } from "./graph-change-set"
+
 export {
   createInitialViewState,
   selectNode,

@@ -15,6 +15,13 @@ export interface GraphToolbarProps {
   readonly onFit: () => void
   readonly onZoomIn: () => void
   readonly onZoomOut: () => void
+  /**
+   * Forces a full, from-scratch recompute of the *current* layout. This is
+   * the only mechanism that may fully re-layout automatically-stable
+   * layouts (e.g. Hierarchy) — automatic topology changes never do this on
+   * their own, so a deliberate action is always available.
+   */
+  readonly onRelayout: () => void
   readonly query: string
   readonly onQueryChange: (query: string) => void
   /** Node ids currently selected — expansion roots for the query intent. */
@@ -48,6 +55,7 @@ export function GraphToolbar({
   onFit,
   onZoomIn,
   onZoomOut,
+  onRelayout,
   query,
   onQueryChange,
   selectedNodeIds,
@@ -101,6 +109,14 @@ export function GraphToolbar({
         </button>
         <button type="button" className={btnClass} onClick={onFit}>
           Fit
+        </button>
+        <button
+          type="button"
+          className={btnClass}
+          title="Force a full recompute of the current layout"
+          onClick={onRelayout}
+        >
+          Re-layout
         </button>
       </div>
 

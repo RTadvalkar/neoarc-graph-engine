@@ -21,6 +21,7 @@ import { GraphFiltersPanel } from "./graph-filters-panel"
 import { GraphLegend } from "./graph-legend"
 import { GraphMinimap } from "./graph-minimap"
 import { useGraphExplorer } from "./use-graph-explorer"
+import { buildSpatialMemoryKey } from "./spatial-memory"
 
 export interface GraphExplorerProps {
   readonly model: GraphModel
@@ -29,6 +30,16 @@ export interface GraphExplorerProps {
   readonly initialViewState?: Partial<GraphViewState>
   /** Authoritative intents (expand/search/path/impact) the host must fulfill. */
   readonly onIntent?: (event: GraphSemanticEvent) => void
+  /**
+   * Stable identity for "the thing being explored" (e.g. a scenario id, a
+   * saved query id, or a root node id) — distinct from `GraphModel`'s
+   * revision, which changes on every automatic data update. Used as part of
+   * the spatial-memory cache key so a scenario switch gets a fresh/restored
+   * arrangement while an in-place data update on the *same* scenario never
+   * evicts the mental map. Defaults to `"default"` when the host has only
+   * one view to explore.
+   */
+  readonly viewIdentity?: string
   readonly renderNodeExtras?: (node: GraphViewNode) => React.ReactNode
   readonly renderEdgeExtras?: (edge: GraphViewEdge) => React.ReactNode
   readonly className?: string
@@ -46,6 +57,7 @@ export function GraphExplorer({
   renderer,
   initialViewState,
   onIntent,
+  viewIdentity = "default",
   renderNodeExtras,
   renderEdgeExtras,
   className,
@@ -59,6 +71,7 @@ export function GraphExplorer({
     controller
 
   const activeLayoutId = viewState.layoutId ?? renderer.availableLayouts[0]?.id
+  const spatialMemoryKey = buildSpatialMemoryKey(viewIdentity, renderer.id, activeLayoutId ?? "default")
   const filters = viewState.filters ?? {}
   const filtersActive =
     (filters.nodeTypes?.length ?? 0) > 0 ||
@@ -85,13 +98,11 @@ export function GraphExplorer({
       <GraphToolbar
         layouts={renderer.availableLayouts}
         activeLayoutId={activeLayoutId}
-        onLayoutChange={(id) => {
-          setLayoutId(id)
-          canvasRef.current?.runLayout()
-        }}
+        onLayoutChange={setLayoutId}
         onFit={() => canvasRef.current?.fit()}
         onZoomIn={() => canvasRef.current?.zoomBy(1.2)}
         onZoomOut={() => canvasRef.current?.zoomBy(1 / 1.2)}
+        onRelayout={() => canvasRef.current?.runLayout()}
         query={viewState.filters?.query ?? ""}
         onQueryChange={setQuery}
         selectedNodeIds={viewState.selectedNodeIds}
@@ -123,6 +134,7 @@ export function GraphExplorer({
             layoutId={activeLayoutId}
             onEvent={dispatch}
             onRendererReady={setRendererHandle}
+            spatialMemoryKey={spatialMemoryKey}
             className="absolute inset-0 h-full w-full"
           />
 

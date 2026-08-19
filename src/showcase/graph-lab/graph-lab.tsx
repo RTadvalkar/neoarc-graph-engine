@@ -1,12 +1,50 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import type { GraphModel, GraphSemanticEvent } from "@neoarc/graph-contracts"
+import type {
+  GraphChangeSet,
+  GraphId,
+  GraphModel,
+  GraphPatch,
+  GraphSemanticEvent,
+} from "@neoarc/graph-contracts"
 import { GraphExplorer } from "@neoarc/graph-ui"
+import { applyGraphPatch, deriveGraphChangeSet } from "@neoarc/graph-core"
 import { cytoscapeRenderer } from "@neoarc/graph-cytoscape"
 import { showcaseRegistries } from "./registries"
-import { expandFromBackend } from "./system-graph"
+import { buildAgentUpdatePatch, expandFromBackend } from "./system-graph"
 import { GRAPH_LAB_SCENARIOS } from "./scenarios"
+
+/**
+ * SHOWCASE ONLY. Renders a `GraphChangeSet` (derived against the pre-patch
+ * model, which is why edge endpoint labels are looked up there) as a short,
+ * structured list of what an agent-supplied patch changed — never inferred,
+ * only what the patch itself declared.
+ */
+function formatChangeSummary(
+  changeSet: GraphChangeSet,
+  patch: GraphPatch,
+  preModel: GraphModel,
+): string[] {
+  const labelOf = (id: GraphId): string =>
+    patch.addNodes?.find((n) => n.id === id)?.label ??
+    patch.updateNodes?.find((n) => n.id === id)?.label ??
+    preModel.nodes.find((n) => n.id === id)?.label ??
+    id
+
+  const lines: string[] = []
+  for (const id of changeSet.addedNodeIds ?? []) lines.push(`+ ${labelOf(id)}`)
+  const relCount = changeSet.addedEdgeIds?.length ?? 0
+  if (relCount > 0) lines.push(`+ ${relCount} relationship${relCount === 1 ? "" : "s"}`)
+  for (const id of changeSet.updatedNodeIds ?? []) lines.push(`~ ${labelOf(id)}`)
+  for (const ref of changeSet.removedEdgeRefs ?? []) {
+    const sourceLabel = preModel.nodes.find((n) => n.id === ref.source)?.label ?? ref.source
+    const targetLabel = preModel.nodes.find((n) => n.id === ref.target)?.label ?? ref.target
+    lines.push(`- ${ref.type} ${sourceLabel} → ${targetLabel}`)
+  }
+  for (const ref of changeSet.removedNodeRefs ?? []) lines.push(`- ${ref.label ?? ref.id}`)
+  return lines
+}
 
 /**
  * SHOWCASE controller. It owns the authoritative GraphModel and fulfills the
@@ -21,12 +59,14 @@ export function GraphLab() {
   const [status, setStatus] = useState<string>(
     `Loaded ${scenario.model.nodes.length} nodes, ${scenario.model.edges.length} relationships.`,
   )
+  const [changeSummary, setChangeSummary] = useState<readonly string[] | null>(null)
 
   const handleScenarioChange = useCallback((id: string) => {
     const next = GRAPH_LAB_SCENARIOS.find((s) => s.id === id) ?? GRAPH_LAB_SCENARIOS[0]
     setScenarioId(id)
     setModel(next.model)
     setStatus(`Loaded ${next.model.nodes.length} nodes, ${next.model.edges.length} relationships.`)
+    setChangeSummary(null)
   }, [])
 
   const handleIntent = useCallback((event: GraphSemanticEvent) => {
@@ -44,17 +84,59 @@ export function GraphLab() {
         )
         return current
       }
+      // Every model change — including expansion — goes through the same
+      // supplied-patch application path as an agent update, rather than
+      // hand-rolling a merge here.
       const existingEdgeIds = new Set(current.edges.map((e) => e.id))
-      const mergedEdges = [...current.edges, ...edges.filter((e) => !existingEdgeIds.has(e.id))]
-      setStatus(
-        `Expanded ${rootNodeIds.length} node(s) ${direction}, ${maxHops} hop(s): +${nodes.length} nodes, +${edges.length} relationships.`,
-      )
-      return {
-        ...current,
-        revision: (current.revision ?? 1) + 1,
-        nodes: [...current.nodes, ...nodes],
-        edges: mergedEdges,
+      const newEdges = edges.filter((e) => !existingEdgeIds.has(e.id))
+      const patch: GraphPatch = {
+        baseRevision: current.revision,
+        resultRevision: (current.revision ?? 1) + 1,
+        addNodes: nodes,
+        addEdges: newEdges,
       }
+      const result = applyGraphPatch(current, patch)
+      if (result.status !== "applied") {
+        setStatus(`Expansion rejected (${result.status}): ${result.reason ?? "unknown reason"}.`)
+        return current
+      }
+      setStatus(
+        `Expanded ${rootNodeIds.length} node(s) ${direction}, ${maxHops} hop(s): +${nodes.length} nodes, +${newEdges.length} relationships.`,
+      )
+      setChangeSummary(null)
+      return result.model
+    })
+  }, [])
+
+  /**
+   * Simulates an autonomous agent proposing a supplied `GraphPatch` against
+   * whatever model is currently loaded — proving `applyGraphPatch` and
+   * `deriveGraphChangeSet` end to end, including the removal-visibility
+   * case, without ever mutating selection or exploration focus (those live
+   * in the Explorer's own view state and are untouched by a model update).
+   */
+  const handleSimulateAgentUpdate = useCallback(() => {
+    setModel((current) => {
+      const simulation = buildAgentUpdatePatch(current)
+      if (!simulation) {
+        setStatus("Simulate agent update: nothing to simulate on an empty graph.")
+        return current
+      }
+      const { patch, sourceRefs } = simulation
+      const result = applyGraphPatch(current, patch)
+      if (result.status !== "applied") {
+        setStatus(`Simulated agent update rejected (${result.status}): ${result.reason ?? "unknown reason"}.`)
+        return current
+      }
+      const changeSet = deriveGraphChangeSet(
+        current,
+        patch,
+        `agent-update-${current.revision ?? 1}`,
+        sourceRefs,
+      )
+      setStatus("Simulated agent update applied — see change summary below.")
+      setChangeSummary(formatChangeSummary(changeSet, patch, current))
+      return result.model
     })
   }, [])
 
@@ -68,23 +150,34 @@ export function GraphLab() {
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Graph Lab scenarios">
-          {GRAPH_LAB_SCENARIOS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              role="tab"
-              aria-selected={s.id === scenarioId}
-              onClick={() => handleScenarioChange(s.id)}
-              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                s.id === scenarioId
-                  ? "border-ring bg-foreground text-background"
-                  : "border-border bg-background text-foreground hover:bg-muted"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Graph Lab scenarios">
+            {GRAPH_LAB_SCENARIOS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={s.id === scenarioId}
+                onClick={() => handleScenarioChange(s.id)}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  s.id === scenarioId
+                    ? "border-ring bg-foreground text-background"
+                    : "border-border bg-background text-foreground hover:bg-muted"
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSimulateAgentUpdate}
+            title="Apply a supplied GraphPatch as if an autonomous agent proposed it — proves patch application and the change summary end to end."
+            className="inline-flex h-7 items-center rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            Simulate agent update
+          </button>
         </div>
 
         <p className="text-pretty text-sm text-muted-foreground">{scenario.description}</p>
@@ -97,9 +190,24 @@ export function GraphLab() {
           registries={showcaseRegistries}
           renderer={cytoscapeRenderer}
           initialViewState={scenario.initialViewState}
+          viewIdentity={scenarioId}
           onIntent={handleIntent}
         />
       </div>
+
+      {changeSummary && changeSummary.length > 0 ? (
+        <div
+          className="flex flex-col gap-1 rounded-md border border-border bg-card px-3 py-2 text-xs"
+          aria-live="polite"
+        >
+          <span className="font-medium text-foreground">Agent update — change summary</span>
+          <ul className="flex flex-col gap-0.5 font-mono text-muted-foreground">
+            {changeSummary.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <footer
         className="rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground"

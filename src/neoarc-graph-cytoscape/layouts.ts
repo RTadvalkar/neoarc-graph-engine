@@ -10,7 +10,14 @@ import type { RendererLayoutDescriptor } from "@neoarc/graph-renderer"
  * one hierarchical layout (breadthfirst, for tree/DAG-oriented views).
  */
 export const CYTOSCAPE_LAYOUTS: readonly RendererLayoutDescriptor[] = [
-  { id: "fcose", label: "Explore" },
+  // fCoSE understands `fixedNodeConstraint`, so it can settle new/changed
+  // nodes incrementally without disturbing survivors — an automatic topology
+  // change may safely re-run it with `randomize: false`.
+  { id: "fcose", label: "Explore", supportsIncrementalLayout: true },
+  // breadthfirst has no fixed-node/incremental-settle concept in Cytoscape:
+  // re-running it at all rearranges every node from its root. It therefore
+  // gets no flag (defaults falsy) — an automatic topology change must never
+  // trigger it; only an explicit Re-layout may recompute it from scratch.
   { id: "breadthfirst", label: "Hierarchy" },
 ]
 
@@ -52,7 +59,12 @@ export function buildLayoutOptions(
         spacingFactor: 1.1,
         avoidOverlap: true,
         animate: false,
-        fit: true,
+        // Only a true from-scratch layout (initial mount or explicit
+        // Re-layout, both of which pass randomize: true — breadthfirst has
+        // no incremental mode, so "randomize" here just distinguishes those
+        // from a restored/no-op invocation) auto-fits the viewport; a
+        // restore/no-op call must not silently move the camera.
+        fit: randomize,
       }
     case "fcose":
     default:
@@ -65,9 +77,17 @@ export function buildLayoutOptions(
       // already on screen are pinned so only new nodes need to find a home.
       return {
         name: "fcose",
-        quality: "default",
+        // cytoscape-fcose requires quality: "proof" whenever randomize is
+        // false — "default"/"draft" quality assumes a from-scratch
+        // (randomized) run and silently misbehaves on an incremental,
+        // fixed-constraint settle.
+        quality: randomize ? "default" : "proof",
         animate: false,
-        fit: true,
+        // Only a true from-scratch layout auto-fits the viewport; an
+        // incremental settle over fixed survivors must not silently move
+        // the camera. Explicit Fit stays a separate, always-available
+        // toolbar action.
+        fit: randomize,
         padding: 48,
         randomize,
         nodeDimensionsIncludeLabels: true,
