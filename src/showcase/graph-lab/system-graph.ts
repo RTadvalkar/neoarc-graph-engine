@@ -17,6 +17,10 @@ import type {
  * `BACKEND_NODES/EDGES` model the authoritative store. The initial view loads
  * only a subset; expansion intents are fulfilled by the showcase controller
  * reading from this "backend" — never by hidden fetches inside the library.
+ *
+ * G4 note: "Deployment"/"streamsTo" are now REGISTERED in `registries.ts`
+ * (configuration-only proof), so the unknown-type fallback proof instead
+ * uses the intentionally-unregistered "QuantumGateway"/"teleportsTo" here.
  */
 
 const BACKEND_NODES: GraphNode[] = [
@@ -40,7 +44,14 @@ const BACKEND_NODES: GraphNode[] = [
   { id: "cap-payments", type: "Capability", label: "Accept payments" },
   { id: "cap-catalog", type: "Capability", label: "Browse catalog" },
   { id: "cap-auth", type: "Capability", label: "Authenticate users" },
-  { id: "req-pci", type: "Requirement", label: "PCI DSS compliance" },
+  {
+    id: "req-pci",
+    type: "Requirement",
+    label: "PCI DSS compliance",
+    // Facets without combinatorial types: still a plain "Requirement" node.
+    // Facets are read from properties.facets (an open string vocabulary).
+    properties: { facets: ["security", "approved", "high-impact"] },
+  },
   { id: "req-latency", type: "Requirement", label: "Sub-200ms checkout" },
   { id: "req-gdpr", type: "Requirement", label: "GDPR data handling" },
   // Stories & tests
@@ -49,12 +60,50 @@ const BACKEND_NODES: GraphNode[] = [
   { id: "test-checkout-e2e", type: "Test", label: "Checkout E2E" },
   { id: "test-charge-unit", type: "Test", label: "Charge unit test" },
   // Findings
-  { id: "find-secret", type: "Finding", label: "Hardcoded API secret", properties: { severity: "high", status: "open" } },
+  {
+    id: "find-secret",
+    type: "Finding",
+    label: "Hardcoded API secret",
+    properties: { severity: "high", status: "open", facets: ["security"] },
+  },
   { id: "find-nplus1", type: "Finding", label: "N+1 query in catalog", properties: { severity: "medium", status: "triaged" } },
   // External systems
   { id: "ext-stripe", type: "ExternalSystem", label: "Stripe" },
+  // Registered "Deployment" nodes (configuration-only proof — see registries.ts).
+  {
+    id: "deploy-checkout-prod",
+    type: "Deployment",
+    label: "checkout-prod-cluster",
+    properties: {
+      owner: "Payments",
+      version: "2.4.1",
+      environment: "production",
+      region: "us-east-1",
+      confidence: 0.92,
+      risk: "low",
+      changeSet: "PR-4821",
+      source: "argo-cd",
+      lastModified: "2025-01-14T09:30:00.000Z",
+    },
+  },
+  {
+    id: "deploy-payments-prod",
+    type: "Deployment",
+    label: "payments-prod-cluster",
+    properties: {
+      owner: "Payments",
+      version: "1.9.0",
+      environment: "production",
+      region: "us-east-1",
+      confidence: 0.78,
+      risk: "medium",
+      changeSet: "PR-4790",
+      source: "argo-cd",
+      lastModified: "2025-01-12T16:05:00.000Z",
+    },
+  },
   // Intentionally UNREGISTERED node type — must render via safe fallback.
-  { id: "deploy-prod", type: "Deployment", label: "prod-cluster" },
+  { id: "gateway-1", type: "QuantumGateway", label: "gateway-1" },
 
   // ---- Backend-only (revealed via expansion) ----
   { id: "svc-notifications", type: "Service", label: "Notification Service", properties: { team: "Platform", language: "TypeScript", tier: 2 } },
@@ -75,8 +124,11 @@ const BACKEND_EDGES: GraphEdge[] = [
   { id: "e6", type: "dependsOn", source: "svc-identity", target: "svc-catalog" }, // cycle
   // Self-loop with an UNREGISTERED edge type — must fall back safely.
   { id: "e7", type: "retries", source: "svc-payments", target: "svc-payments" },
-  // Unregistered edge type to an unregistered node type.
-  { id: "e8", type: "runsOn", source: "svc-checkout", target: "deploy-prod" },
+  // Unregistered edge type to an unregistered node type — safe fallback proof.
+  { id: "e8", type: "teleportsTo", source: "svc-checkout", target: "gateway-1" },
+  // Registered "streamsTo" edges to the registered "Deployment" nodes above.
+  { id: "e8a", type: "streamsTo", source: "svc-checkout", target: "deploy-checkout-prod" },
+  { id: "e8b", type: "streamsTo", source: "svc-payments", target: "deploy-payments-prod" },
   { id: "e9", type: "implements", source: "svc-payments", target: "cap-payments" },
   { id: "e10", type: "implements", source: "svc-catalog", target: "cap-catalog" },
   { id: "e11", type: "implements", source: "svc-identity", target: "cap-auth" },

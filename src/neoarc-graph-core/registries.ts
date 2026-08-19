@@ -44,6 +44,12 @@ export interface GraphActionDefinition {
   readonly target: GraphActionTarget
   readonly icon?: string
   readonly description?: string
+  /**
+   * Restricts a "node"/"edge" targeted action to specific open-string
+   * node/edge types. Omitted (or empty) means "applies to every type" —
+   * this is a plain string allow-list, never a closed enum.
+   */
+  readonly appliesToTypes?: readonly string[]
 }
 
 export type NodeTypeRegistry = Registry<GraphNodeTypeDefinition>

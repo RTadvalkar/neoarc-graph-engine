@@ -81,6 +81,26 @@ describe("buildViewModel", () => {
   it("carries the source revision onto the derived view", () => {
     expect(buildViewModel(model).sourceRevision).toBe(3)
   })
+
+  it("filters by facet without requiring a new node type", () => {
+    // Facets are an open string vocabulary read from properties.facets — no
+    // new type needed to gain a facet-filterable dimension.
+    const withFacets: GraphModel = Object.freeze({
+      id: "m3",
+      revision: 1,
+      nodes: [
+        { id: "req-a", type: "Requirement", properties: { facets: ["security", "approved"] } },
+        { id: "req-b", type: "Requirement", properties: { facets: ["performance"] } },
+      ],
+      edges: [],
+    }) as GraphModel
+
+    const vm = buildViewModel(
+      withFacets,
+      createInitialViewState({ filters: { facets: ["security"] } }),
+    )
+    expect(vm.nodes.map((n) => n.id)).toEqual(["req-a"])
+  })
 })
 
 describe("collapse aggregation", () => {

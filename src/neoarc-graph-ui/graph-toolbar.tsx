@@ -6,6 +6,7 @@ import type {
   GraphQueryRequest,
   GraphTraversalDirection,
 } from "@neoarc/graph-contracts"
+import type { GraphActionDefinition } from "@neoarc/graph-core"
 import type { RendererLayoutDescriptor } from "@neoarc/graph-renderer"
 
 export interface GraphToolbarProps {
@@ -39,6 +40,12 @@ export interface GraphToolbarProps {
   /** Optional overlay-panel toggle. Rendered only when a handler is supplied. */
   readonly onToggleOverlays?: () => void
   readonly overlaysActive?: boolean
+  /** Canvas/selection-targeted actions from `registries.actions`. */
+  readonly actions?: readonly GraphActionDefinition[]
+  readonly onAction?: (
+    actionId: string,
+    context: { readonly target: "canvas" | "selection" },
+  ) => void
 }
 
 const DIRECTIONS: readonly GraphTraversalDirection[] = ["both", "outgoing", "incoming"]
@@ -72,6 +79,8 @@ export function GraphToolbar({
   filtersActive,
   onToggleOverlays,
   overlaysActive,
+  actions,
+  onAction,
 }: GraphToolbarProps) {
   const [maxHops, setMaxHops] = useState<number>(1)
   const [hopPreset, setHopPreset] = useState<string>("1")
@@ -79,6 +88,9 @@ export function GraphToolbar({
 
   const canExpand = selectedNodeIds.length > 0
   const canFocus = selectedNodeIds.length === 1
+  const canvasActions = (actions ?? []).filter((a) => a.target === "canvas")
+  const selectionActions = (actions ?? []).filter((a) => a.target === "selection")
+  const hasSelection = selectedNodeIds.length > 0
 
   const handleHopPresetChange = (value: string) => {
     setHopPreset(value)
@@ -225,6 +237,37 @@ export function GraphToolbar({
         >
           Overlays
         </button>
+      ) : null}
+
+      {canvasActions.length > 0 || selectionActions.length > 0 ? (
+        <>
+          <div className="h-6 w-px bg-border" aria-hidden="true" />
+          <div className="flex items-center gap-1">
+            {canvasActions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                title={action.description}
+                className={btnClass}
+                onClick={() => onAction?.(action.id, { target: "canvas" })}
+              >
+                {action.label}
+              </button>
+            ))}
+            {selectionActions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                title={action.description}
+                disabled={!hasSelection}
+                className={btnClass}
+                onClick={() => onAction?.(action.id, { target: "selection" })}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </>
       ) : null}
 
       <div className="ml-auto flex items-center gap-1.5">
