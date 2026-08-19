@@ -195,6 +195,12 @@ export function buildViewModel(
   >()
 
   for (const edge of model.edges) {
+    // The relationship-type filter applies to every canonical edge before it
+    // takes either path below: a type excluded by `edgeTypeFilter` must not
+    // render as an ordinary edge AND must not contribute to (or appear in
+    // the underlying ids of) an aggregate/meta-edge.
+    if (!typeAllowed(edge.type, edgeTypeFilter)) continue
+
     const effectiveSource = resolveVisibleEndpoint(edge.source)
     const effectiveTarget = resolveVisibleEndpoint(edge.target)
     if (!effectiveSource || !effectiveTarget) continue
@@ -203,7 +209,6 @@ export function buildViewModel(
 
     if (!wasSubstituted) {
       // Ordinary, unmodified edge: both endpoints are visible as-is.
-      if (!typeAllowed(edge.type, edgeTypeFilter)) continue
       const endpointsHighlighted =
         !!query &&
         (nodes.find((n) => n.id === edge.source)?.searchHighlighted ?? false) &&

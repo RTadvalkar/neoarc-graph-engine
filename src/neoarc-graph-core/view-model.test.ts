@@ -99,6 +99,7 @@ describe("collapse aggregation", () => {
     edges: [
       { id: "e-api", type: "calls", source: "api", target: "other" },
       { id: "e-ent", type: "dependsOn", source: "ent", target: "other" },
+      { id: "e-ent2", type: "implements", source: "ent", target: "other" },
     ],
   }) as GraphModel
 
@@ -111,7 +112,7 @@ describe("collapse aggregation", () => {
     const meta = vm.edges[0]
     expect(meta.source).toBe("svc")
     expect(meta.target).toBe("other")
-    expect([...(meta.aggregatedEdgeIds ?? [])].sort()).toEqual(["e-api", "e-ent"])
+    expect([...(meta.aggregatedEdgeIds ?? [])].sort()).toEqual(["e-api", "e-ent", "e-ent2"])
   })
 
   it("expanding again restores the original, unaggregated relationships", () => {
@@ -119,8 +120,22 @@ describe("collapse aggregation", () => {
     const expanded = toggleContainerCollapsed(collapsed, "svc")
     const vm = buildViewModel(crossBoundaryModel, expanded)
 
-    expect(vm.edges.map((e) => e.id).sort()).toEqual(["e-api", "e-ent"])
+    expect(vm.edges.map((e) => e.id).sort()).toEqual(["e-api", "e-ent", "e-ent2"])
     expect(vm.edges.every((e) => !e.aggregatedEdgeIds)).toBe(true)
+  })
+
+  it("applies the edgeTypes filter before aggregation, excluding non-matching canonical edges from the meta-edge", () => {
+    const collapsedAndFiltered = toggleContainerCollapsed(
+      createInitialViewState({ filters: { edgeTypes: ["dependsOn"] } }),
+      "svc",
+    )
+    const vm = buildViewModel(crossBoundaryModel, collapsedAndFiltered)
+
+    expect(vm.nodes.map((n) => n.id).sort()).toEqual(["other", "svc"])
+    expect(vm.edges).toHaveLength(1)
+    const meta = vm.edges[0]
+    expect(meta.label).toBe("1 relationship")
+    expect(meta.aggregatedEdgeIds).toEqual(["e-ent"])
   })
 })
 
