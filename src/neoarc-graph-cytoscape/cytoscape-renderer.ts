@@ -511,21 +511,29 @@ class CytoscapeRendererHandle implements GraphRendererHandle {
    * Cytoscape adapter so no renderer-specific quirk leaks into graph-core.
    */
   private repaintEdges(): void {
-    // Must run on a fresh tick, outside any batch Cytoscape is still holding
-    // open around the layout callback that triggers this — a net-zero nudge
-    // coalesced inside that batch cancels to nothing and never repaints.
-    const run = () => {
+    // The nudge and the restore must land on two SEPARATE ticks. Batched (or
+    // even same-tick) they coalesce into a single net-zero position diff that
+    // Cytoscape optimizes away, so no position event fires and the edges never
+    // paint. Splitting them across frames makes each a real, observable
+    // position change: the first forces the edge render state to invalidate
+    // and paint, the second returns nodes to their exact original coordinates
+    // (net displacement zero — snapshots and fixed constraints unchanged).
+    const defer = (fn: () => void) =>
+      typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 0)
+
+    defer(() => {
       if (this.destroyed || this.cy.edges().empty()) return
+      const originals = this.cy.nodes().map((node) => ({ node, pos: { ...node.position() } }))
       this.cy.batch(() => {
-        this.cy.nodes().forEach((node) => {
-          const { x, y } = node.position()
-          node.position({ x: x + 0.5, y })
-          node.position({ x, y })
+        for (const { node, pos } of originals) node.position({ x: pos.x + 0.5, y: pos.y })
+      })
+      defer(() => {
+        if (this.destroyed) return
+        this.cy.batch(() => {
+          for (const { node, pos } of originals) node.position({ x: pos.x, y: pos.y })
         })
       })
-    }
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(run)
-    else setTimeout(run, 0)
+    })
   }
 
   fit(padding = 40): void {
